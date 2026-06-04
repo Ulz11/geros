@@ -5,6 +5,7 @@ import { useLang } from "./lib/i18n";
 import Login from "./views/Login";
 import Dashboard from "./views/Dashboard";
 import GerMap from "./views/GerMap";
+import Calendar from "./views/Calendar";
 import Bookings from "./views/Bookings";
 import Operators from "./views/Operators";
 import Finance from "./views/Finance";
@@ -18,6 +19,7 @@ import { Deny } from "./components/ui";
 const VIEWS = {
   dashboard: Dashboard,
   gers: GerMap,
+  calendar: Calendar,
   bookings: Bookings,
   operators: Operators,
   finance: Finance,

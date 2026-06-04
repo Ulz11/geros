@@ -140,7 +140,7 @@ and print a superuser password too).
 ### Tests
 
 ```sh
-cd backend && node --test        # 25 integration tests, zero deps
+cd backend && node --test        # 54 integration tests, zero deps
 ```
 Each test spins up an isolated PocketBase on a temp DB, provisioned by the **same
 migrations production uses**, and exercises the real hooks + API rules: smart allocation,
@@ -148,7 +148,9 @@ assign + auto-invoice, the audit trail, public-booking validation + rate limitin
 role matrix. CI (`.github/workflows/ci.yml`) runs this plus the production frontend build on
 every push.
 
-Five endpoints the hooks add (all single-call, server-side, audited):
+Six endpoints the hooks add (all single-call, server-side, audited):
+- `GET  /api/camp/availability?from=YYYY-MM-DD&days=N` — every ger + its active
+  reservations overlapping the window; feeds the calendar view.
 - `GET  /api/camp/recommend/{bookingId}` — ranked best-fit gers, **date-aware**: a ger
   reserved by a confirmed booking with overlapping dates is excluded; a ger someone
   sleeps in tonight is still offered for September.
@@ -241,6 +243,11 @@ script with Caddy TLS + systemd + nightly consistent SQLite backups.
   gap-proof by construction, no retry needed inside a transaction. 4 new tests
   (48 total). Verified clean: unique indexes on ref/number/code/key were already
   in place.
+- **v1.5 (done, tested + verified end-to-end):** availability calendar — a gers × days
+  grid (3-week window, shift by week) showing every reservation: teal = reserved,
+  red = guests in the ger, physical-status dot per ger, booking ref + tooltip on each
+  span, today highlighted. Backed by `GET /api/camp/availability` (6 new tests, 54
+  total). Staff can finally answer "can we take 6 people Aug 14-17?" at a glance.
 - **Not yet done:** Generic
   operator-PDF auto-parsing (the standalone generator handles the known format).
   Deliberately out of scope: online card payments,

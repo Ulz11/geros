@@ -1,15 +1,16 @@
 // Role → visible sections. Mirrors docs/DATA_MODEL.md permission matrix.
 // This is UX only — the real enforcement is the API rules in pb_schema.json.
 export const PERMS = {
-  admin: ["dashboard", "gers", "bookings", "operators", "finance", "payroll", "kitchen", "reports", "audit", "settings"],
-  manager: ["dashboard", "gers", "bookings", "operators", "finance", "payroll", "kitchen", "reports", "audit"],
+  admin: ["dashboard", "gers", "calendar", "bookings", "operators", "finance", "payroll", "kitchen", "reports", "audit", "settings"],
+  manager: ["dashboard", "gers", "calendar", "bookings", "operators", "finance", "payroll", "kitchen", "reports", "audit"],
   kitchen: ["dashboard", "kitchen"],
-  worker: ["dashboard", "gers", "bookings"],
+  worker: ["dashboard", "gers", "calendar", "bookings"],
 };
 
 export const NAV = [
   { k: "dashboard", ic: "◧" },
   { k: "gers", ic: "⬡" },
+  { k: "calendar", ic: "◫" },
   { k: "bookings", ic: "▤" },
   { k: "operators", ic: "◎" },
   { k: "finance", ic: "₮" },

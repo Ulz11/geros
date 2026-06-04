@@ -51,6 +51,58 @@ routerAdd("GET", "/api/camp/recommend/{bookingId}", (e) => {
 });
 
 /* ----------------------------------------------------------------
+   2b. AVAILABILITY (read-only, v1.5)
+   GET /api/camp/availability?from=YYYY-MM-DD&days=N
+   One call feeding the calendar: every ger plus its active (confirmed /
+   checked_in) reservations overlapping the [from, from+days) window.
+   ---------------------------------------------------------------- */
+routerAdd("GET", "/api/camp/availability", (e) => {
+  if (!e.auth) return e.json(401, { error: "auth required" });
+
+  const q = e.requestInfo().query || {};
+  const from = String(q.from || new Date().toISOString().slice(0, 10));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from)) return e.json(400, { error: "from" });
+  let days = parseInt(q.days, 10);
+  if (!Number.isFinite(days) || days < 1) days = 28;
+  if (days > 120) days = 120;
+  const to = new Date(new Date(from + "T00:00:00Z").getTime() + days * 86400000)
+    .toISOString().slice(0, 10);
+
+  // active reservations overlapping the window, grouped per ger
+  const byGer = {};
+  const holders = e.app.findRecordsByFilter(
+    "bookings",
+    "(status = 'confirmed' || status = 'checked_in') && check_in < {:to} && check_out > {:from}",
+    "check_in", 500, 0,
+    { from: from + " 00:00:00.000Z", to: to + " 00:00:00.000Z" }
+  );
+  holders.forEach((b) => {
+    const entry = {
+      ref: b.get("ref"),
+      status: b.get("status"),
+      guest: b.get("guest_name") || "",
+      party: b.getInt("party"),
+      check_in: String(b.get("check_in") || "").slice(0, 10),
+      check_out: String(b.get("check_out") || "").slice(0, 10),
+    };
+    (b.get("assigned_gers") || []).forEach((gid) => {
+      (byGer[gid] = byGer[gid] || []).push(entry);
+    });
+  });
+
+  const gers = e.app.findRecordsByFilter("gers", "id != ''", "code", 200, 0).map((g) => ({
+    id: g.id,
+    code: g.get("code"),
+    name: g.get("name") || "",
+    capacity: g.getInt("capacity"),
+    status: g.get("status"),
+    bookings: byGer[g.id] || [],
+  }));
+
+  return e.json(200, { from: from, days: days, to: to, gers: gers });
+});
+
+/* ----------------------------------------------------------------
    3. ASSIGN (write)
    POST /api/camp/assign/{bookingId}
    ---------------------------------------------------------------- */

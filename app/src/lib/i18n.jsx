@@ -49,6 +49,7 @@ const I18N = {
     wageBill: "Monthly wage bill", paidThisMonth: "Paid this month", month: "Month",
     showInactive: "Show inactive",
     gerOccupied: "A ger is still occupied by another booking.",
+    calendar: "Calendar", reserved: "Reserved", todayBtn: "Today",
   },
   mn: {
     tagline: "Кэмп удирдлага, хялбархан. Нэвтэрч орно уу.",
@@ -97,6 +98,7 @@ const I18N = {
     wageBill: "Сарын цалингийн сан", paidThisMonth: "Энэ сард олгосон", month: "Сар",
     showInactive: "Идэвхгүйг харуулах",
     gerOccupied: "Гэр өөр захиалгад дүүрэн байна.",
+    calendar: "Хуанли", reserved: "Захиалсан", todayBtn: "Өнөөдөр",
   },
 };
 
