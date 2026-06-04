@@ -24,16 +24,17 @@ export default function Reports() {
     let alive = true;
     (async () => {
       try {
-        const [gers, bookings, invoices, kitchen, operators] = await Promise.all([
+        const [gers, bookings, invoices, kitchen, operators, wagePays] = await Promise.all([
           pb.collection("gers").getFullList({ fields: "id,status" }),
           pb.collection("bookings").getFullList(),
           pb.collection("invoices").getFullList(),
           pb.collection("kitchen_txns").getFullList(),
           pb.collection("tour_operators").getFullList().catch(() => []),
+          pb.collection("wage_payments").getFullList().catch(() => []),
         ]);
-        if (alive) setData({ gers, bookings, invoices, kitchen, operators });
+        if (alive) setData({ gers, bookings, invoices, kitchen, operators, wagePays });
       } catch (_) {
-        if (alive) setData({ gers: [], bookings: [], invoices: [], kitchen: [], operators: [] });
+        if (alive) setData({ gers: [], bookings: [], invoices: [], kitchen: [], operators: [], wagePays: [] });
       }
     })();
     // camp identity for the printable report header (same source as the invoice)
@@ -53,25 +54,28 @@ export default function Reports() {
   }, []);
 
   if (!data) return <Loading t={t} />;
-  const { gers, bookings, invoices, kitchen, operators } = data;
+  const { gers, bookings, invoices, kitchen, operators, wagePays } = data;
 
   // season (year) filter — "all" keeps the original all-time behaviour
   const years = [...new Set([
     ...invoices.map((i) => yearOf(invoiceDate(i))),
     ...kitchen.map((k) => yearOf(kitchenDate(k))),
     ...bookings.map((b) => yearOf(bookingDate(b))),
+    ...wagePays.map((w) => yearOf(w.period)),
   ].filter(Boolean))].sort().reverse();
   const inSeason = (v) => season === "all" || yearOf(v) === season;
 
   const fInv = invoices.filter((i) => inSeason(invoiceDate(i)));
   const fKitchen = kitchen.filter((k) => inSeason(kitchenDate(k)));
   const fBookings = bookings.filter((b) => inSeason(bookingDate(b)));
+  const fWages = wagePays.filter((w) => inSeason(w.period));
   const active = fBookings.filter((b) => b.status !== "cancelled");
 
   const totalRev = fInv.reduce((s, i) => s + (i.amount || 0), 0);
   const kIn = fKitchen.filter((k) => k.type === "income").reduce((s, k) => s + k.amount, 0);
   const kOut = fKitchen.filter((k) => k.type === "expense").reduce((s, k) => s + k.amount, 0);
-  const net = totalRev + kIn - kOut;
+  const wagesOut = fWages.reduce((s, w) => s + (w.amount || 0) + (w.bonus || 0) - (w.deduction || 0), 0);
+  const net = totalRev + kIn - kOut - wagesOut;
   const margin = totalRev + kIn > 0 ? Math.round((net / (totalRev + kIn)) * 100) : 0;
 
   const chan = { operator: 0, website: 0, phone: 0, walkin: 0 };
@@ -86,9 +90,9 @@ export default function Reports() {
   const nights = active.reduce((s, b) => s + (b.nights || 0), 0);
   const avgBooking = active.length ? Math.round(active.reduce((s, b) => s + (b.amount || 0), 0) / active.length) : 0;
 
-  // monthly breakdown: invoice revenue + kitchen income/expense per month
+  // monthly breakdown: invoice revenue + kitchen income/expense + wages per month
   const months = {};
-  const monthRow = (mk) => (months[mk] = months[mk] || { rev: 0, kin: 0, exp: 0 });
+  const monthRow = (mk) => (months[mk] = months[mk] || { rev: 0, kin: 0, exp: 0, wag: 0 });
   fInv.forEach((i) => { const mk = monthKey(invoiceDate(i)); if (mk) monthRow(mk).rev += i.amount || 0; });
   fKitchen.forEach((k) => {
     const mk = monthKey(kitchenDate(k));
@@ -96,8 +100,12 @@ export default function Reports() {
     if (k.type === "income") monthRow(mk).kin += k.amount || 0;
     else monthRow(mk).exp += k.amount || 0;
   });
+  fWages.forEach((w) => {
+    const mk = monthKey(w.period); // period is already "YYYY-MM"
+    if (mk) monthRow(mk).wag += (w.amount || 0) + (w.bonus || 0) - (w.deduction || 0);
+  });
   const monthly = Object.entries(months).sort(([a], [b]) => a.localeCompare(b))
-    .map(([mk, v]) => ({ mk, ...v, net: v.rev + v.kin - v.exp }));
+    .map(([mk, v]) => ({ mk, ...v, net: v.rev + v.kin - v.exp - v.wag }));
 
   // top operators by invoice revenue (the financial truth), top 5
   const byOp = {};
@@ -119,7 +127,7 @@ export default function Reports() {
     return { s, count: rows.length, sum: rows.reduce((a, i) => a + (i.amount || 0), 0) };
   });
 
-  const stats = { totalRev, kIn, kOut, net, margin, chan, byStatus, guests, nights,
+  const stats = { totalRev, kIn, kOut, wagesOut, net, margin, chan, byStatus, guests, nights,
     avgBooking, monthly, topOps, invStatus, bookings: active.length };
 
   function exportSummary() {
@@ -130,6 +138,7 @@ export default function Reports() {
         ["total_invoice_revenue", totalRev],
         ["kitchen_income", kIn],
         ["kitchen_expense", kOut],
+        ["staff_wages", wagesOut],
         ["net", net],
         ["margin_pct", margin],
         ["occupancy_now_pct", occ],
@@ -161,7 +170,7 @@ export default function Reports() {
         } />
       <div className="grid3" style={{ marginBottom: 16 }}>
         <Tile label={t("totalRev")} big={fmt(totalRev + kIn)} bigStyle={{ color: "var(--green)", fontSize: 24 }} />
-        <Tile label={t("expense")} big={fmt(kOut)} bigStyle={{ color: "var(--red)", fontSize: 24 }} />
+        <Tile label={t("expense")} big={fmt(kOut + wagesOut)} bigStyle={{ color: "var(--red)", fontSize: 24 }} />
         <Tile label={t("profit")} big={fmt(net)} bigStyle={{ fontSize: 24 }}
           sub={<span className="chip g">{margin}% {t("margin")}</span>} />
       </div>
@@ -235,6 +244,7 @@ function ReportSheet({ t, meta, season, stats, onClose }) {
             <tr><td>Нэхэмжлэхийн орлого / Invoice revenue</td><td className="num">{fmt(stats.totalRev)}</td></tr>
             <tr><td>Гал тогооны орлого / Kitchen income</td><td className="num">{fmt(stats.kIn)}</td></tr>
             <tr><td>Гал тогооны зарлага / Kitchen expense</td><td className="num">−{fmt(stats.kOut)}</td></tr>
+            <tr><td>Ажилтны цалин / Staff wages</td><td className="num">−{fmt(stats.wagesOut)}</td></tr>
             <tr style={{ fontWeight: 700 }}>
               <td>ЦЭВЭР / NET ({stats.margin}% {t("margin")})</td>
               <td className="num">{fmt(stats.net)}</td>
@@ -252,6 +262,7 @@ function ReportSheet({ t, meta, season, stats, onClose }) {
                   <th className="num">Орлого / Revenue</th>
                   <th className="num">Гал тогоо / Kitchen</th>
                   <th className="num">Зарлага / Expense</th>
+                  <th className="num">Цалин / Wages</th>
                   <th className="num">Цэвэр / Net</th>
                 </tr>
               </thead>
@@ -262,6 +273,7 @@ function ReportSheet({ t, meta, season, stats, onClose }) {
                     <td className="num">{fmt(m.rev)}</td>
                     <td className="num">{fmt(m.kin)}</td>
                     <td className="num">{fmt(m.exp)}</td>
+                    <td className="num">{fmt(m.wag)}</td>
                     <td className="num"><b>{fmt(m.net)}</b></td>
                   </tr>
                 ))}

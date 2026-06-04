@@ -109,6 +109,27 @@ this collection from the same PocketBase.
 
 ---
 
+## `staff` + `wage_payments` (v1.2 — payroll)
+
+| field | type | notes |
+|---|---|---|
+| `staff.name` | text, required | |
+| `staff.title`, `phone`, `note` | text | |
+| `staff.monthly_wage` | number | default amount for a pay run |
+| `staff.active` | bool | inactive staff get no Pay button |
+| `wage_payments.staff` | relation → staff, required | |
+| `wage_payments.period` | text `YYYY-MM`, required | **unique with `staff`** — the double-pay guard |
+| `wage_payments.amount` / `bonus` / `deduction` | number | net paid = amount + bonus − deduction |
+| `wage_payments.paid_on` | date | |
+
+Wages are sensitive: **all** rules (list/view/create/update) are admin/manager only,
+delete admin only. Both collections are audited. Wage payments count as expenses in
+Finance and the season report (kitchen net stays kitchen-only). Added by the
+`1717200200_payroll.js` migration — post-release schema changes ship as their own
+migration files; the init migration stays frozen at the v1 snapshot.
+
+---
+
 ## Role → permission matrix
 
 | Section | admin | manager | kitchen | worker |
@@ -118,6 +139,7 @@ this collection from the same PocketBase.
 | Bookings | ✓ | ✓ | — | view |
 | Operators / CRM | ✓ | ✓ | — | — |
 | Finance / Invoices | ✓ | ✓ | — | — |
+| Payroll (staff + wages) | ✓ | ✓ | — | — |
 | Kitchen | ✓ | ✓ | ✓ | — |
 | Reports | ✓ | ✓ | — | — |
 | Activity log | ✓ | ✓ | — | — |

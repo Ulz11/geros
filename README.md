@@ -207,7 +207,15 @@ script with Caddy TLS + systemd + nightly consistent SQLite backups.
   breakdown, booking stats by channel and status, top operators by invoice revenue, and
   invoice status totals. Reuses the invoice paper styles; verified in a real browser
   against a seeded 4-month season, including print-media rendering.
+- **v1.2 (done, tested + verified end-to-end):** payroll — staff registry + monthly pay
+  runs (admin/manager only; wages never visible to kitchen/worker, enforced by API
+  rules). One Pay click per staff per month, prefilled from their wage, with bonus and
+  deduction; a unique (staff, period) index makes double-paying a month impossible.
+  Wage payments flow into Finance's monthly expenses and the season report (own summary
+  row + monthly column); kitchen net stays kitchen-only. Both collections audited.
+  6 new integration tests (31 total). Ships as its own migration —
+  `1717200200_payroll.js` — existing camps just restart PocketBase.
 - **Not yet done:** Generic
-  operator-PDF auto-parsing (the standalone generator handles the known format). Payroll
-  beyond wage expense lines. Deliberately out of scope: online card payments,
+  operator-PDF auto-parsing (the standalone generator handles the known format).
+  Deliberately out of scope: online card payments,
   multi-camp tenancy.

@@ -13,6 +13,7 @@ export default function Finance({ role }) {
   const toast = useToast();
   const [inv, setInv] = useState(null);
   const [kitchen, setKitchen] = useState([]);
+  const [wages, setWages] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [siteMeta, setSiteMeta] = useState({});
   const [showNew, setShowNew] = useState(false);
@@ -21,14 +22,16 @@ export default function Finance({ role }) {
 
   const load = useCallback(async () => {
     try {
-      const [i, k, b] = await Promise.all([
+      const [i, k, b, w] = await Promise.all([
         pb.collection("invoices").getFullList({ sort: "-created", expand: "operator" }),
         pb.collection("kitchen_txns").getFullList({ sort: "-date" }).catch(() => []),
         pb.collection("bookings").getFullList({ sort: "-created", expand: "operator" }).catch(() => []),
+        pb.collection("wage_payments").getFullList().catch(() => []),
       ]);
       setInv(i);
       setKitchen(k);
       setBookings(b);
+      setWages(w);
     } catch (_) {
       toast(t("connErr"));
       setInv([]);
@@ -103,6 +106,13 @@ export default function Finance({ role }) {
     if (!mk) return;
     months[mk] = months[mk] || { rev: 0, exp: 0 };
     months[mk].exp += k.amount || 0;
+  });
+  // staff wages count as expenses too (period is already a "YYYY-MM" key)
+  wages.forEach((w) => {
+    const mk = w.period;
+    if (!/^\d{4}-\d{2}$/.test(mk || "")) return;
+    months[mk] = months[mk] || { rev: 0, exp: 0 };
+    months[mk].exp += (w.amount || 0) + (w.bonus || 0) - (w.deduction || 0);
   });
   const series = Object.entries(months).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
   const maxv = Math.max(...series.map(([, v]) => Math.max(v.rev, v.exp)), 1);

@@ -8,6 +8,7 @@ import GerMap from "./views/GerMap";
 import Bookings from "./views/Bookings";
 import Operators from "./views/Operators";
 import Finance from "./views/Finance";
+import Payroll from "./views/Payroll";
 import Kitchen from "./views/Kitchen";
 import Reports from "./views/Reports";
 import Audit from "./views/Audit";
@@ -20,6 +21,7 @@ const VIEWS = {
   bookings: Bookings,
   operators: Operators,
   finance: Finance,
+  payroll: Payroll,
   kitchen: Kitchen,
   reports: Reports,
   audit: Audit,

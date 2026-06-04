@@ -43,6 +43,11 @@ const I18N = {
     occupancyNow: "Occupancy now", totalBookings: "Total bookings", margin: "margin",
     newInvoice: "New invoice", number: "Number", issued: "Issued",
     printReport: "Print report", season: "Season",
+    payroll: "Payroll", staff: "Staff", position: "Position", monthlyWage: "Monthly wage",
+    active: "Active", inactive: "Inactive", addStaff: "Add staff", editStaff: "Edit staff",
+    bonus: "Bonus", deduction: "Deduction", paidOn: "Paid on", pay: "Pay", unpaid: "Unpaid",
+    wageBill: "Monthly wage bill", paidThisMonth: "Paid this month", month: "Month",
+    showInactive: "Show inactive",
   },
   mn: {
     tagline: "Кэмп удирдлага, хялбархан. Нэвтэрч орно уу.",
@@ -85,6 +90,11 @@ const I18N = {
     occupancyNow: "Одоогийн дүүргэлт", totalBookings: "Нийт захиалга", margin: "ашиг",
     newInvoice: "Шинэ нэхэмжлэх", number: "Дугаар", issued: "Олгосон",
     printReport: "Тайлан хэвлэх", season: "Улирал",
+    payroll: "Цалин", staff: "Ажилтнууд", position: "Албан тушаал", monthlyWage: "Сарын цалин",
+    active: "Идэвхтэй", inactive: "Идэвхгүй", addStaff: "Ажилтан нэмэх", editStaff: "Ажилтан засах",
+    bonus: "Урамшуулал", deduction: "Суутгал", paidOn: "Олгосон огноо", pay: "Олгох", unpaid: "Олгоогүй",
+    wageBill: "Сарын цалингийн сан", paidThisMonth: "Энэ сард олгосон", month: "Сар",
+    showInactive: "Идэвхгүйг харуулах",
   },
 };
 

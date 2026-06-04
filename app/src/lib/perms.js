@@ -1,8 +1,8 @@
 // Role → visible sections. Mirrors docs/DATA_MODEL.md permission matrix.
 // This is UX only — the real enforcement is the API rules in pb_schema.json.
 export const PERMS = {
-  admin: ["dashboard", "gers", "bookings", "operators", "finance", "kitchen", "reports", "audit", "settings"],
-  manager: ["dashboard", "gers", "bookings", "operators", "finance", "kitchen", "reports", "audit"],
+  admin: ["dashboard", "gers", "bookings", "operators", "finance", "payroll", "kitchen", "reports", "audit", "settings"],
+  manager: ["dashboard", "gers", "bookings", "operators", "finance", "payroll", "kitchen", "reports", "audit"],
   kitchen: ["dashboard", "kitchen"],
   worker: ["dashboard", "gers", "bookings"],
 };
@@ -13,6 +13,7 @@ export const NAV = [
   { k: "bookings", ic: "▤" },
   { k: "operators", ic: "◎" },
   { k: "finance", ic: "₮" },
+  { k: "payroll", ic: "▦" },
   { k: "kitchen", ic: "♨" },
   { k: "reports", ic: "◰" },
   { k: "audit", ic: "≣" },
@@ -30,6 +31,8 @@ export const CAN_EDIT = {
   operators: ["admin", "manager"],
   invoices: ["admin", "manager"],
   kitchen_txns: ["admin", "manager", "kitchen"],
+  staff: ["admin", "manager"],
+  wage_payments: ["admin", "manager"],
 };
 
 // Create is stricter than update for gers (schema: createRule admin/manager only —

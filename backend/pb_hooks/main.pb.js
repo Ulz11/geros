@@ -24,7 +24,7 @@
 /* ----------------------------------------------------------------
    1. AUDIT TRAIL
    ---------------------------------------------------------------- */
-const AUDITED = ["bookings", "gers", "invoices", "kitchen_txns", "tour_operators"];
+const AUDITED = ["bookings", "gers", "invoices", "kitchen_txns", "tour_operators", "staff", "wage_payments"];
 
 // writeAudit() and recommendFor() live in ./utils.js, NOT here. PocketBase runs
 // each hook callback in an isolated pooled runtime that cannot see top-level
