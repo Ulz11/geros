@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+# PocketBase version the app + tests are validated against. Bump together with
+# the SDK in app/package.json.
+env:
+  PB_VERSION: "0.39.1"
+
+jobs:
+  backend-tests:
+    name: Backend integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Fetch PocketBase
+        run: |
+          curl -fsSL -o /tmp/pb.zip \
+            "https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip"
+          unzip -o /tmp/pb.zip -d backend
+          chmod +x backend/pocketbase
+
+      - name: Run tests (real PocketBase + migrations + hooks)
+        working-directory: backend
+        run: node --test --test-concurrency=1
+
+  frontend-build:
+    name: Frontend production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install + build
+        working-directory: app
+        run: |
+          npm ci
+          npm run build
+
+      - name: Upload built admin bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-bundle
+          path: backend/pb_public/admin

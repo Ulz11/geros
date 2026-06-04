@@ -1,0 +1,9 @@
+{
+  "name": "geros-backend-tests",
+  "private": true,
+  "type": "module",
+  "description": "Integration tests for the GerOS PocketBase hooks + API rules. No deps - uses Node's built-in test runner and fetch against the bundled pocketbase.exe.",
+  "scripts": {
+    "test": "node --test --test-concurrency=1"
+  }
+}

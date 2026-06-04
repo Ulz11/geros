@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GerOS — Camp Management</title>
+<style>
+  :root{
+    --bg:#f3f1ea; --card:#ffffff; --ink:#1c1b18; --muted:#76726a;
+    --line:#e7e3d9; --accent:#2e7d6f; --accent-ink:#1d5a4f;
+    --green:#2faa5a; --green-bg:#e7f6ec;
+    --red:#d9534f; --red-bg:#fbeceb;
+    --amber:#e8a13c; --amber-bg:#fcf3e2;
+    --blue:#3a7bd5; --shadow:0 1px 2px rgba(20,18,12,.05),0 8px 24px rgba(20,18,12,.06);
+    --r:18px; --r-sm:12px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--ink);font-size:14px;-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  .hidden{display:none !important}
+
+  /* ---------- Login ---------- */
+  #login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:
+    radial-gradient(120% 120% at 80% 0%, #e9efe9 0%, var(--bg) 55%);}
+  .login-card{background:var(--card);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);
+    width:380px;padding:34px 30px;text-align:center}
+  .brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px}
+  .logo{width:34px;height:34px;border-radius:9px;background:var(--accent);position:relative;flex:none}
+  .logo:before{content:"";position:absolute;inset:7px 6px;border-bottom:3px solid #fff;border-radius:0 0 2px 2px}
+  .logo:after{content:"";position:absolute;left:8px;right:8px;top:9px;height:9px;background:#fff;
+    clip-path:polygon(50% 0,100% 100%,0 100%)}
+  .brand h1{font-size:21px;margin:0;letter-spacing:-.3px}
+  .login-card p{color:var(--muted);margin:2px 0 22px;font-size:13px}
+  .roles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .role-btn{border:1px solid var(--line);border-radius:14px;padding:14px 10px;text-align:left;background:#fff;
+    transition:.15s;display:flex;flex-direction:column;gap:2px}
+  .role-btn:hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:var(--shadow)}
+  .role-btn .rn{font-weight:600;font-size:14px}
+  .role-btn .rd{font-size:11.5px;color:var(--muted)}
+  .role-btn .av{font-size:11px;margin-top:6px;color:var(--accent-ink);font-weight:600}
+  .lang-pill{position:fixed;top:18px;right:20px;background:#fff;border:1px solid var(--line);border-radius:999px;
+    padding:5px;display:flex;gap:2px;box-shadow:var(--shadow);z-index:50}
+  .lang-pill button{padding:5px 12px;border-radius:999px;font-size:12px;font-weight:600;color:var(--muted)}
+  .lang-pill button.on{background:var(--accent);color:#fff}
+
+  /* ---------- App shell ---------- */
+  #app{display:none;height:100%}
+  .layout{display:grid;grid-template-columns:226px 1fr;height:100%}
+  aside{background:#fbfaf6;border-right:1px solid var(--line);padding:18px 14px;display:flex;flex-direction:column;gap:4px}
+  .side-brand{display:flex;align-items:center;gap:9px;padding:6px 8px 16px}
+  .side-brand .logo{width:28px;height:28px}
+  .side-brand b{font-size:16px;letter-spacing:-.2px}
+  .nav-i{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:11px;color:var(--muted);
+    font-weight:500;font-size:13.5px}
+  .nav-i:hover{background:#f0ede4;color:var(--ink)}
+  .nav-i.on{background:#fff;color:var(--ink);box-shadow:var(--shadow);font-weight:600}
+  .nav-i .ic{width:18px;text-align:center;font-size:15px;flex:none}
+  .nav-sp{flex:1}
+  .userbox{border-top:1px solid var(--line);padding-top:12px;margin-top:6px}
+  .userbox .who{display:flex;align-items:center;gap:9px;padding:4px 8px}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:flex;
+    align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none}
+  .userbox .nm{font-weight:600;font-size:13px}.userbox .rl{font-size:11px;color:var(--muted)}
+  .logout{font-size:12px;color:var(--muted);padding:6px 8px;border-radius:8px}.logout:hover{background:#f0ede4;color:var(--red)}
+
+  main{overflow:auto;padding:22px 26px 40px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .topbar h2{margin:0;font-size:22px;letter-spacing:-.4px}
+  .topbar .sub{color:var(--muted);font-size:13px;margin-top:2px}
+  .top-actions{display:flex;gap:8px;align-items:center}
+  .btn{background:var(--accent);color:#fff;border-radius:11px;padding:9px 15px;font-weight:600;font-size:13px;
+    box-shadow:var(--shadow);transition:.15s}
+  .btn:hover{background:var(--accent-ink)}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--accent);background:#fff}
+  .btn.sm{padding:6px 11px;font-size:12px;border-radius:9px}
+
+  /* ---------- Bento ---------- */
+  .bento{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;grid-auto-rows:minmax(108px,auto)}
+  .tile{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);
+    display:flex;flex-direction:column;position:relative;overflow:hidden}
+  .tile .lbl{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+  .tile .big{font-size:30px;font-weight:700;letter-spacing:-1px;margin-top:auto;line-height:1}
+  .tile .sm{font-size:12px;color:var(--muted);margin-top:4px}
+  .tile.span2{grid-column:span 2}.tile.span2r{grid-row:span 2}.tile.span4{grid-column:span 4}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px}
+  .chip.g{background:var(--green-bg);color:#1f7a3f}.chip.r{background:var(--red-bg);color:#b13b37}
+  .chip.a{background:var(--amber-bg);color:#a86a14}.chip.b{background:#eaf1fb;color:#2f5fa8}
+  .dot{width:8px;height:8px;border-radius:50%}.dot.g{background:var(--green)}.dot.r{background:var(--red)}.dot.a{background:var(--amber)}
+  .occ-bars{display:flex;gap:6px;align-items:flex-end;height:54px;margin-top:auto}
+  .occ-bars .b{flex:1;border-radius:5px 5px 2px 2px;background:#eee;position:relative}
+  .mini-list{margin-top:10px;display:flex;flex-direction:column;gap:8px;overflow:auto}
+  .mini-row{display:flex;align-items:center;justify-content:space-between;font-size:13px;padding:7px 0;border-top:1px solid var(--line)}
+  .mini-row:first-child{border-top:none}
+  .muted{color:var(--muted)}
+
+  /* ---------- Map ---------- */
+  .map-wrap{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
+  .map-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+  .map-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--line)}
+  .legend{display:flex;gap:14px;font-size:12px;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .map-canvas{position:relative;height:520px;background:
+    radial-gradient(circle at 30% 30%, #eef3ec, #f6f4ee 60%);
+    background-image:linear-gradient(rgba(0,0,0,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.025) 1px,transparent 1px);
+    background-size:34px 34px;overflow:hidden;cursor:default;touch-action:none}
+  .path{position:absolute;left:0;right:0;top:48%;height:40px;background:rgba(180,160,120,.18);transform:rotate(-3deg)}
+  .ger{position:absolute;width:74px;height:74px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    flex-direction:column;font-weight:700;font-size:13px;color:#fff;cursor:grab;user-select:none;
+    box-shadow:0 4px 10px rgba(0,0,0,.14);border:3px solid rgba(255,255,255,.7);transition:box-shadow .15s,transform .05s}
+  .ger small{font-size:9.5px;font-weight:600;opacity:.92}
+  .ger.available{background:radial-gradient(circle at 35% 30%,#5cc47e,#2faa5a)}
+  .ger.occupied{background:radial-gradient(circle at 35% 30%,#e7726e,#d9534f)}
+  .ger.cleaning{background:radial-gradient(circle at 35% 30%,#f0b760,#e8a13c)}
+  .ger:active{cursor:grabbing}
+  .ger.sel{outline:3px solid var(--ink);outline-offset:3px}
+  .ger.rec{animation:pulse 1.1s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(46,125,111,.5)}70%{box-shadow:0 0 0 14px rgba(46,125,111,0)}100%{box-shadow:0 0 0 0 rgba(46,125,111,0)}}
+  .ger .feat{position:absolute;bottom:-7px;display:flex;gap:2px}
+  .ger .feat i{width:7px;height:7px;border-radius:50%;background:#fff;border:1px solid rgba(0,0,0,.12)}
+
+  .side-panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
+    padding:16px;display:flex;flex-direction:column;gap:12px;min-height:200px}
+  .panel-title{font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:space-between}
+  .q-card{border:1px solid var(--line);border-radius:13px;padding:11px 12px;transition:.15s;cursor:pointer}
+  .q-card:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+  .q-card.act{border-color:var(--accent);background:#f4faf8}
+  .q-top{display:flex;justify-content:space-between;align-items:center}
+  .q-name{font-weight:600}.q-meta{font-size:12px;color:var(--muted);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap}
+  .src{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;text-transform:uppercase;letter-spacing:.3px}
+  .src.operator{background:#eef0fb;color:#3a51b5}.src.phone{background:#eaf7f0;color:#1f8a55}
+  .src.walkin{background:#fdf0e6;color:#c47a2a}.src.website{background:#f0ecfb;color:#6b46c1}
+  .kv{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-top:1px solid var(--line)}
+  .kv:first-child{border-top:none}.kv b{font-weight:600}
+  .rec-box{background:#f0faf7;border:1px dashed var(--accent);border-radius:12px;padding:11px}
+  .rec-box .rt{font-size:12px;color:var(--accent-ink);font-weight:700;margin-bottom:5px}
+
+  /* ---------- Tables ---------- */
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:11px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);
+    border-bottom:1px solid var(--line);background:#fbfaf6;font-weight:700}
+  td{padding:11px 14px;border-bottom:1px solid var(--line)}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#fbfaf6}
+  .tag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:7px}
+  .tag.paid{background:var(--green-bg);color:#1f7a3f}.tag.advance{background:var(--amber-bg);color:#a86a14}
+  .tag.pending{background:var(--red-bg);color:#b13b37}.tag.confirmed{background:#eaf1fb;color:#2f5fa8}
+  .tag.checked_in{background:var(--green-bg);color:#1f7a3f}.tag.checked_out{background:#eee;color:#666}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .card-pad{padding:18px}
+  .sec-title{font-weight:700;font-size:15px;margin:0 0 4px}
+  .bar-row{display:flex;align-items:center;gap:10px;margin:9px 0;font-size:12px}
+  .bar-row .nm{width:78px;color:var(--muted)}
+  .bar-track{flex:1;background:#f0ede4;border-radius:7px;height:18px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:7px;background:linear-gradient(90deg,var(--accent),#3fa18f)}
+  .bar-row .vl{width:96px;text-align:right;font-weight:600}
+
+  .form-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  input,select{font-family:inherit;font-size:13px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:#fff}
+  input:focus,select:focus{outline:none;border-color:var(--accent)}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(40px);background:var(--ink);color:#fff;
+    padding:11px 18px;border-radius:12px;font-size:13px;font-weight:500;opacity:0;transition:.25s;z-index:100;box-shadow:var(--shadow)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .deny{padding:60px;text-align:center;color:var(--muted)}
+  .deny .lock{font-size:40px;margin-bottom:10px}
+  .feat-tags{display:flex;gap:6px;flex-wrap:wrap}
+  .feat-tags .ft{font-size:11px;background:#f0ede4;border-radius:7px;padding:3px 8px;color:#5a564e}
+  .status-cycle{display:flex;gap:6px;margin-top:4px}
+  .sc-btn{flex:1;border:1px solid var(--line);border-radius:9px;padding:7px;font-size:12px;font-weight:600;text-align:center}
+  .sc-btn.on{color:#fff;border-color:transparent}.sc-btn.on.available{background:var(--green)}
+  .sc-btn.on.occupied{background:var(--red)}.sc-btn.on.cleaning{background:var(--amber)}
+  .badge-soft{font-size:11px;color:var(--muted);background:#f0ede4;padding:3px 8px;border-radius:7px}
+  .ph{border:1px dashed var(--line);border-radius:14px;padding:30px;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="lang-pill">
+  <button id="lang-en" class="on" onclick="setLang('en')">EN</button>
+  <button id="lang-mn" onclick="setLang('mn')">MN</button>
+</div>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="login-card">
+    <div class="brand"><div class="logo"></div><h1>GerOS</h1></div>
+    <p id="login-sub">Camp management, simplified. Pick a user to sign in.</p>
+    <div class="roles" id="role-grid"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="layout">
+    <aside>
+      <div class="side-brand"><div class="logo"></div><b>GerOS</b></div>
+      <nav id="nav"></nav>
+      <div class="nav-sp"></div>
+      <div class="userbox">
+        <div class="who">
+          <div class="avatar" id="u-av">A</div>
+          <div><div class="nm" id="u-nm">Admin</div><div class="rl" id="u-rl">Administrator</div></div>
+        </div>
+        <button class="logout" onclick="logout()" id="logout-btn">Sign out</button>
+      </div>
+    </aside>
+    <main id="main"></main>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   GerOS — interactive prototype (Day 1)
+   Single file, no dependencies. Data shapes mirror the
+   PocketBase schema in /backend so this is a migration path.
+   ============================================================ */
+
+/* ---------- i18n ---------- */
+const I18N = {
+  en:{
+    tagline:"Camp management, simplified. Pick a user to sign in.",
+    dashboard:"Dashboard", gers:"Ger Map", bookings:"Bookings", operators:"Operators",
+    finance:"Finance", kitchen:"Kitchen", reports:"Reports", audit:"Activity Log", settings:"Website & Settings",
+    signout:"Sign out", newBooking:"New booking", occupancy:"Occupancy", available:"Available",
+    occupied:"Occupied", cleaning:"Cleaning", arrivalsToday:"Arrivals today", departuresToday:"Departures today",
+    revenueMonth:"Revenue (Jun)", pendingInv:"Pending invoices", kitchenPnl:"Kitchen P&L today",
+    queue:"Booking queue", smartAlloc:"Smart allocation", assignRec:"Assign to recommended gers",
+    party:"Guests", nights:"Nights", channel:"Channel", guest:"Guest", capacity:"Capacity",
+    features:"Features", status:"Status", currentGuest:"Current guest", noGuest:"Empty — available",
+    stove:"Stove", ensuite:"Ensuite", view:"View", heating:"Heating", ref:"Ref", operator:"Operator",
+    amount:"Amount", payStatus:"Payment", dates:"Dates", invoice:"Invoice", paid:"Paid", advance:"Advance",
+    pending:"Pending", confirmed:"Confirmed", checked_in:"Checked-in", checked_out:"Checked-out",
+    income:"Income", expense:"Expense", profit:"Net", category:"Category", note:"Note", add:"Add",
+    revExpense:"Revenue vs Expense", invStatus:"Invoice status", byChannel:"Bookings by channel",
+    seasonReport:"End-of-season summary", export:"Export", date:"Date", user:"User", action:"Action",
+    detail:"Detail", time:"Time", recommend:"Recommended", reason:"Why", movedGer:"Moved ger",
+    statusChanged:"Changed status", assigned:"Assigned booking", addedTxn:"Added transaction",
+    noAccess:"You don't have access to this section.", contractOk:"Contract signed", contractNone:"No contract",
+    totalRev:"Total revenue", bookingsCount:"Bookings", restaurant:"Restaurant", groceries:"Groceries",
+    wages:"Staff wages", utilities:"Utilities", websiteNote:"Bilingual booking site + content manager land here in Phase 2. The admin edits photos, prices and promos from this dashboard; the public MN/EN site reads from the same database.",
+    todayArr:"Today's arrivals", gerCol:"Ger", roomsFor:"Best fit for", waste:"spare beds",
+    occ:"occupied", needGers:"needs", manage:"Manage", quickAdd:"Quick add"
+  },
+  mn:{
+    tagline:"Кэмп удирдлага, хялбархан. Нэвтрэх хэрэглэгчээ сонгоно уу.",
+    dashboard:"Хяналт", gers:"Гэрийн зураг", bookings:"Захиалга", operators:"Туроператор",
+    finance:"Санхүү", kitchen:"Гал тогоо", reports:"Тайлан", audit:"Үйлдлийн бүртгэл", settings:"Вэб ба тохиргоо",
+    signout:"Гарах", newBooking:"Шинэ захиалга", occupancy:"Дүүргэлт", available:"Сул",
+    occupied:"Дүүрэн", cleaning:"Цэвэрлэж буй", arrivalsToday:"Өнөөдрийн ирэлт", departuresToday:"Өнөөдрийн явалт",
+    revenueMonth:"Орлого (6-р сар)", pendingInv:"Төлбөр хүлээгдэж буй", kitchenPnl:"Гал тогооны ашиг (өнөөдөр)",
+    queue:"Захиалгын дараалал", smartAlloc:"Ухаалаг хуваарилалт", assignRec:"Санал болгосон гэрт хуваарилах",
+    party:"Зочид", nights:"Хоног", channel:"Суваг", guest:"Зочин", capacity:"Багтаамж",
+    features:"Онцлог", status:"Төлөв", currentGuest:"Одоогийн зочин", noGuest:"Хоосон — сул",
+    stove:"Зуух", ensuite:"Угаалгын өрөө", view:"Үзэмж", heating:"Халаалт", ref:"Дугаар", operator:"Оператор",
+    amount:"Дүн", payStatus:"Төлбөр", dates:"Огноо", invoice:"Нэхэмжлэх", paid:"Төлсөн", advance:"Урьдчилгаа",
+    pending:"Хүлээгдэж буй", confirmed:"Баталгаажсан", checked_in:"Бүртгэгдсэн", checked_out:"Гарсан",
+    income:"Орлого", expense:"Зарлага", profit:"Цэвэр", category:"Ангилал", note:"Тэмдэглэл", add:"Нэмэх",
+    revExpense:"Орлого ба зарлага", invStatus:"Нэхэмжлэхийн төлөв", byChannel:"Сувгаар захиалга",
+    seasonReport:"Улирлын эцсийн тайлан", export:"Татах", date:"Огноо", user:"Хэрэглэгч", action:"Үйлдэл",
+    detail:"Дэлгэрэнгүй", time:"Цаг", recommend:"Санал болгосон", reason:"Шалтгаан", movedGer:"Гэр зөөсөн",
+    statusChanged:"Төлөв өөрчилсөн", assigned:"Захиалга хуваарилсан", addedTxn:"Гүйлгээ нэмсэн",
+    noAccess:"Танд энэ хэсэгт хандах эрх алга.", contractOk:"Гэрээ байгуулсан", contractNone:"Гэрээгүй",
+    totalRev:"Нийт орлого", bookingsCount:"Захиалга", restaurant:"Ресторан", groceries:"Хүнсний бараа",
+    wages:"Ажиллах хүч", utilities:"Шугам сүлжээ",
+    websiteNote:"MN/EN хос хэлний захиалгын сайт ба контент удирдлага 2-р шатанд энд орно. Админ зураг, үнэ, урамшууллыг энэ самбараас засна; нийтийн сайт ижил өгөгдлийн сангаас уншина.",
+    todayArr:"Өнөөдрийн ирэлт", gerCol:"Гэр", roomsFor:"Тохирох", waste:"илүү ор",
+    occ:"дүүрэн", needGers:"шаардлагатай", manage:"Удирдах", quickAdd:"Хурдан нэмэх"
+  }
+};
+let LANG = "en";
+const t = k => (I18N[LANG][k] ?? k);
+
+/* ---------- Users / roles ---------- */
+const USERS = [
+  {id:"u1", name:"B. Bat-Erdene", role:"admin",   label:{en:"Administrator",mn:"Админ"},     desc:{en:"Full access",mn:"Бүрэн эрх"}},
+  {id:"u2", name:"S. Oyun",       role:"manager", label:{en:"Manager",mn:"Менежер"},        desc:{en:"Ops + finance",mn:"Үйл ажиллагаа"}},
+  {id:"u3", name:"D. Naran",      role:"kitchen", label:{en:"Kitchen",mn:"Тогооч"},          desc:{en:"Kitchen only",mn:"Зөвхөн гал тогоо"}},
+  {id:"u4", name:"T. Ganaa",      role:"worker",  label:{en:"Worker",mn:"Ажилтан"},          desc:{en:"Map + status",mn:"Гэр, төлөв"}}
+];
+const PERMS = {
+  admin:  ["dashboard","gers","bookings","operators","finance","kitchen","reports","audit","settings"],
+  manager:["dashboard","gers","bookings","operators","finance","kitchen","reports","audit"],
+  kitchen:["dashboard","kitchen"],
+  worker: ["dashboard","gers","bookings"]
+};
+const NAV = [
+  {k:"dashboard",ic:"◧"},{k:"gers",ic:"⬡"},{k:"bookings",ic:"▤"},{k:"operators",ic:"◎"},
+  {k:"finance",ic:"₮"},{k:"kitchen",ic:"♨"},{k:"reports",ic:"◰"},{k:"audit",ic:"≣"},{k:"settings",ic:"⚙"}
+];
+
+/* ---------- Seed data (mirrors PocketBase collections) ---------- */
+const fmt = n => "₮" + n.toLocaleString("en-US");
+function gerSeed(){
+  const F=(s,e,v,h)=>({stove:s,ensuite:e,view:v,heating:h});
+  const rows=[
+    ["G-01",4,"available",F(1,1,1,1)],["G-02",2,"occupied",F(1,0,1,1)],["G-03",4,"available",F(1,1,0,1)],
+    ["G-04",2,"cleaning",F(1,0,1,0)],["G-05",6,"available",F(1,1,1,1)],["G-06",4,"occupied",F(1,1,0,1)],
+    ["G-07",2,"available",F(1,0,0,1)],["G-08",4,"available",F(1,1,1,0)],["G-09",2,"occupied",F(1,0,1,1)],
+    ["G-10",6,"available",F(1,1,1,1)],["G-11",4,"cleaning",F(1,1,0,1)],["G-12",2,"available",F(1,0,1,0)],
+    ["G-13",4,"available",F(1,1,1,1)],["G-14",2,"occupied",F(1,0,0,1)],["G-15",4,"available",F(1,1,1,1)],
+    ["G-16",6,"available",F(1,1,1,1)]
+  ];
+  return rows.map((r,i)=>{
+    const col=i%4, row=Math.floor(i/4);
+    return {id:"g"+(i+1), code:r[0], capacity:r[1], status:r[2], features:r[3],
+      x:60+col*200+(row%2?40:0), y:40+row*120, currentBooking:null};
+  });
+}
+const STATE = {
+  gers: gerSeed(),
+  operators:[
+    {id:"o1",name:"Nomadic Trails GmbH",country:"Germany",contact:"M. Weber",email:"weber@nomadictrails.de",contract:true,bookings:14,revenue:48600000},
+    {id:"o2",name:"Silk Road Journeys",country:"USA",contact:"J. Park",email:"park@silkroadj.com",contract:true,bookings:9,revenue:31200000},
+    {id:"o3",name:"Altai Adventures",country:"France",contact:"L. Dubois",email:"l.dubois@altai.fr",contract:false,bookings:5,revenue:12400000}
+  ],
+  bookings:[
+    {id:"b1",ref:"BK-1042",channel:"operator",operator:"o1",guest:"Weber group (DE)",party:8,guides:1,nights:3,checkIn:"2026-06-05",checkOut:"2026-06-08",status:"pending",gers:[],amount:7200000,pay:"pending",services:["Full board","Horse trek"]},
+    {id:"b2",ref:"BK-1043",channel:"website",operator:null,guest:"Anderson family",party:4,guides:0,nights:2,checkIn:"2026-06-05",checkOut:"2026-06-07",status:"pending",gers:[],amount:2400000,pay:"advance",services:["Breakfast"]},
+    {id:"b3",ref:"BK-1044",channel:"phone",operator:null,guest:"O. Tseren (local)",party:2,guides:0,nights:1,checkIn:"2026-06-05",checkOut:"2026-06-06",status:"pending",gers:[],amount:520000,pay:"pending",services:[]},
+    {id:"b4",ref:"BK-1045",channel:"operator",operator:"o2",guest:"Park group (US)",party:12,guides:2,nights:4,checkIn:"2026-06-06",checkOut:"2026-06-10",status:"pending",gers:[],amount:14800000,pay:"advance",services:["Full board","Cultural show","Transfer"]},
+    {id:"b5",ref:"BK-1046",channel:"walkin",operator:null,guest:"2 cyclists (NL)",party:2,guides:0,nights:1,checkIn:"2026-06-05",checkOut:"2026-06-06",status:"pending",gers:[],amount:480000,pay:"paid",services:["Breakfast"]}
+  ],
+  invoices:[
+    {id:"i1",number:"INV-2026-088",booking:"BK-1039",operator:"o1",amount:6800000,status:"paid",issued:"2026-06-01"},
+    {id:"i2",number:"INV-2026-089",booking:"BK-1040",operator:"o2",amount:9200000,status:"advance",issued:"2026-06-02"},
+    {id:"i3",number:"INV-2026-090",booking:"BK-1041",operator:"o3",amount:3100000,status:"pending",issued:"2026-06-02"},
+    {id:"i4",number:"INV-2026-091",booking:"BK-1038",operator:null,amount:1450000,status:"paid",issued:"2026-05-31"}
+  ],
+  kitchen:[
+    {id:"k1",date:"2026-06-03",type:"income",category:"restaurant",note:"Dinner — 18 covers",amount:1260000,user:"D. Naran"},
+    {id:"k2",date:"2026-06-03",type:"expense",category:"groceries",note:"Meat + dairy run",amount:480000,user:"D. Naran"},
+    {id:"k3",date:"2026-06-02",type:"income",category:"restaurant",note:"Lunch buffet",amount:890000,user:"D. Naran"},
+    {id:"k4",date:"2026-06-02",type:"expense",category:"utilities",note:"Gas refill",amount:150000,user:"D. Naran"}
+  ],
+  audit:[
+    {id:"a1",ts:"2026-06-03 08:12",user:"S. Oyun",role:"manager",action:"assigned",entity:"BK-1041 → G-06",detail:"Confirmed + invoiced"},
+    {id:"a2",ts:"2026-06-03 07:55",user:"T. Ganaa",role:"worker",action:"statusChanged",entity:"G-04 → cleaning",detail:"Checkout done"},
+    {id:"a3",ts:"2026-06-03 07:40",user:"D. Naran",role:"kitchen",action:"addedTxn",entity:"Kitchen income ₮890,000",detail:"Lunch buffet"}
+  ]
+};
+
+/* monthly revenue series for charts (MNT, millions) */
+const REV_SERIES=[
+  {m:"May",rev:42,exp:26},{m:"Jun",rev:58,exp:31},{m:"Jul",rev:74,exp:38},{m:"Aug",rev:69,exp:36},{m:"Sep",rev:38,exp:24}
+];
+
+/* ---------- App state ---------- */
+let CURRENT=null, VIEW="dashboard", SELBOOK=null, SELGER=null;
+
+/* ============================================================ LOGIN */
+function renderRoles(){
+  document.getElementById("login-sub").textContent=t("tagline");
+  const g=document.getElementById("role-grid");
+  g.innerHTML=USERS.map(u=>`
+    <button class="role-btn" onclick="login('${u.id}')">
+      <span class="rn">${u.label[LANG]}</span>
+      <span class="rd">${u.name}</span>
+      <span class="av">${u.desc[LANG]} ›</span>
+    </button>`).join("");
+}
+function login(uid){
+  CURRENT=USERS.find(u=>u.id===uid);
+  VIEW = PERMS[CURRENT.role][0];
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("app").style.display="block";
+  document.getElementById("u-av").textContent=CURRENT.name.split(" ").pop()[0];
+  document.getElementById("u-nm").textContent=CURRENT.name;
+  document.getElementById("u-rl").textContent=CURRENT.label[LANG];
+  buildNav(); render();
+}
+function logout(){
+  CURRENT=null;
+  document.getElementById("app").style.display="none";
+  document.getElementById("login").classList.remove("hidden");
+}
+function buildNav(){
+  const allowed=PERMS[CURRENT.role];
+  document.getElementById("nav").innerHTML=NAV.filter(n=>allowed.includes(n.k)).map(n=>
+    `<a class="nav-i ${n.k===VIEW?'on':''}" onclick="go('${n.k}')"><span class="ic">${n.ic}</span>${t(n.k)}</a>`).join("");
+  document.getElementById("logout-btn").textContent=t("signout");
+}
+function go(v){ VIEW=v; SELGER=null; buildNav(); render(); }
+
+/* ---------- audit helper ---------- */
+function logAudit(action,entity,detail){
+  const now=new Date();
+  const ts=now.toISOString().slice(0,10)+" "+now.toTimeString().slice(0,5);
+  STATE.audit.unshift({id:"a"+Date.now(),ts,user:CURRENT.name,role:CURRENT.role,action,entity,detail:detail||""});
+}
+function toast(msg){
+  const el=document.getElementById("toast"); el.textContent=msg; el.classList.add("show");
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"),2200);
+}
+
+/* ============================================================ RENDER ROUTER */
+function render(){
+  const allowed=PERMS[CURRENT.role];
+  if(!allowed.includes(VIEW)){ document.getElementById("main").innerHTML=
+    `<div class="deny"><div class="lock">🔒</div><div>${t("noAccess")}</div></div>`; return; }
+  ({dashboard:vDashboard,gers:vMap,bookings:vBookings,operators:vOperators,
+    finance:vFinance,kitchen:vKitchen,reports:vReports,audit:vAudit,settings:vSettings}[VIEW])();
+}
+function head(title,sub,actions){
+  return `<div class="topbar"><div><h2>${title}</h2>${sub?`<div class="sub">${sub}</div>`:""}</div>
+    <div class="top-actions">${actions||""}</div></div>`;
+}
+
+/* ---------- Dashboard ---------- */
+function counts(){
+  const a=STATE.gers.filter(g=>g.status==="available").length;
+  const o=STATE.gers.filter(g=>g.status==="occupied").length;
+  const c=STATE.gers.filter(g=>g.status==="cleaning").length;
+  return {a,o,c,total:STATE.gers.length};
+}
+function vDashboard(){
+  const c=counts();
+  const pct=Math.round(c.o/c.total*100);
+  const arrivals=STATE.bookings.filter(b=>b.checkIn==="2026-06-05").length+2;
+  const pendInv=STATE.invoices.filter(i=>i.status!=="paid").length;
+  const kIn=STATE.kitchen.filter(k=>k.date==="2026-06-03"&&k.type==="income").reduce((s,k)=>s+k.amount,0);
+  const kOut=STATE.kitchen.filter(k=>k.date==="2026-06-03"&&k.type==="expense").reduce((s,k)=>s+k.amount,0);
+  const occBars=STATE.gers.slice(0,12).map(g=>{
+    const col=g.status==="occupied"?"var(--red)":g.status==="cleaning"?"var(--amber)":"var(--green)";
+    const h=30+ (g.capacity*9);
+    return `<div class="b" style="height:${h}%;background:${col}"></div>`;}).join("");
+  const arrRows=STATE.bookings.filter(b=>b.checkIn==="2026-06-05").map(b=>`
+    <div class="mini-row"><div><b>${b.guest}</b><div class="muted" style="font-size:11px">${b.party} ${t("party").toLowerCase()} · ${b.nights} ${t("nights").toLowerCase()}</div></div>
+    <span class="src ${b.channel}">${b.channel}</span></div>`).join("");
+
+  document.getElementById("main").innerHTML = head(t("dashboard"),
+    new Date().toDateString(),
+    canDo("bookings")?`<button class="btn" onclick="go('bookings')">+ ${t("newBooking")}</button>`:"")
+  + `<div class="bento">
+      <div class="tile">
+        <div class="lbl">${t("occupancy")}</div>
+        <div class="big">${pct}%</div>
+        <div class="sm">${c.o}/${c.total} ${t("occupied").toLowerCase()}</div>
+      </div>
+      <div class="tile">
+        <div class="lbl">${t("available")}</div>
+        <div class="big" style="color:var(--green)">${c.a}</div>
+        <div class="sm"><span class="chip a">${c.c} ${t("cleaning").toLowerCase()}</span></div>
+      </div>
+      <div class="tile span2">
+        <div class="lbl">${t("occupancy")} · live</div>
+        <div class="occ-bars">${occBars}</div>
+      </div>
+      <div class="tile">
+        <div class="lbl">${t("revenueMonth")}</div>
+        <div class="big">₮58<span style="font-size:15px">M</span></div>
+        <div class="sm"><span class="chip g">▲ 38%</span></div>
+      </div>
+      <div class="tile">
+        <div class="lbl">${t("pendingInv")}</div>
+        <div class="big" style="color:var(--amber)">${pendInv}</div>
+        <div class="sm">${fmt(STATE.invoices.filter(i=>i.status!=='paid').reduce((s,i)=>s+i.amount,0))}</div>
+      </div>
+      <div class="tile span2r">
+        <div class="lbl">${t("todayArr")}</div>
+        <div class="mini-list">${arrRows||`<div class="muted">—</div>`}</div>
+      </div>
+      <div class="tile">
+        <div class="lbl">${t("arrivalsToday")}</div>
+        <div class="big" style="color:var(--accent)">${arrivals}</div>
+      </div>
+      <div class="tile">
+        <div class="lbl">${t("kitchenPnl")}</div>
+        <div class="big" style="color:${kIn-kOut>=0?'var(--green)':'var(--red)'}">${fmt(kIn-kOut)}</div>
+        <div class="sm">${t("income")} ${fmt(kIn)} · ${t("expense")} ${fmt(kOut)}</div>
+      </div>
+    </div>`;
+}
+function canDo(v){ return PERMS[CURRENT.role].includes(v); }
+
+/* ---------- Interactive Ger Map ---------- */
+function vMap(){
+  const legend=`<div class="legend">
+    <span><span class="dot g"></span>${t("available")}</span>
+    <span><span class="dot r"></span>${t("occupied")}</span>
+    <span><span class="dot a"></span>${t("cleaning")}</span></div>`;
+  document.getElementById("main").innerHTML = head(t("gers"), t("smartAlloc"), "")
+  + `<div class="map-wrap">
+      <div class="map-card">
+        <div class="map-head">${legend}<span class="badge-soft">${t("occupancy")}: ${counts().o}/${counts().total}</span></div>
+        <div class="map-canvas" id="canvas"><div class="path"></div></div>
+      </div>
+      <div id="map-side"></div>
+    </div>`;
+  drawGers(); renderMapSide();
+}
+function drawGers(){
+  const cv=document.getElementById("canvas");
+  cv.querySelectorAll(".ger").forEach(e=>e.remove());
+  const rec = SELBOOK ? recommendGers(SELBOOK).gers.map(g=>g.id) : [];
+  STATE.gers.forEach(g=>{
+    const el=document.createElement("div");
+    el.className="ger "+g.status+(SELGER===g.id?" sel":"")+(rec.includes(g.id)?" rec":"");
+    el.style.left=g.x+"px"; el.style.top=g.y+"px";
+    const f=g.features;
+    el.innerHTML=`${g.code}<small>${g.capacity} ${t("party").toLowerCase()}</small>
+      <span class="feat">${f.stove?'<i></i>':''}${f.ensuite?'<i></i>':''}${f.view?'<i></i>':''}</span>`;
+    el.onpointerdown=e=>startDrag(e,g,el);
+    cv.appendChild(el);
+  });
+}
+let drag=null;
+function startDrag(e,g,el){
+  e.preventDefault();
+  const cv=document.getElementById("canvas").getBoundingClientRect();
+  drag={g,el,offX:e.clientX-cv.left-g.x,offY:e.clientY-cv.top-g.y,moved:false,cv};
+  el.setPointerCapture(e.pointerId);
+  el.onpointermove=ev=>{
+    let nx=ev.clientX-drag.cv.left-drag.offX, ny=ev.clientY-drag.cv.top-drag.offY;
+    nx=Math.max(0,Math.min(nx,drag.cv.width-74)); ny=Math.max(0,Math.min(ny,drag.cv.height-74));
+    g.x=Math.round(nx); g.y=Math.round(ny); el.style.left=g.x+"px"; el.style.top=g.y+"px"; drag.moved=true;
+  };
+  el.onpointerup=ev=>{
+    el.onpointermove=null; el.onpointerup=null;
+    if(drag.moved){ logAudit("movedGer",g.code,`x:${g.x}, y:${g.y}`); toast(`${g.code} ${t('movedGer').toLowerCase()}`); }
+    else { SELGER=g.id; renderMapSide(); drawGers(); }
+    drag=null;
+  };
+}
+function renderMapSide(){
+  const side=document.getElementById("map-side");
+  if(SELGER){ side.innerHTML=gerPanel(STATE.gers.find(g=>g.id===SELGER)); return; }
+  // queue panel
+  const q=STATE.bookings.filter(b=>b.status==="pending");
+  side.innerHTML=`<div class="side-panel">
+    <div class="panel-title">${t("queue")} <span class="badge-soft">${q.length}</span></div>
+    ${q.map(b=>queueCard(b)).join("")}
+    ${SELBOOK?recBox(STATE.bookings.find(b=>b.id===SELBOOK)):""}
+  </div>`;
+}
+function queueCard(b){
+  const op=b.operator?STATE.operators.find(o=>o.id===b.operator).name:"";
+  return `<div class="q-card ${SELBOOK===b.id?'act':''}" onclick="selectBooking('${b.id}')">
+    <div class="q-top"><span class="q-name">${b.guest}</span><span class="src ${b.channel}">${b.channel}</span></div>
+    <div class="q-meta"><span>${b.party} ${t("party").toLowerCase()}</span><span>${b.nights} ${t("nights").toLowerCase()}</span>
+    <span>${b.checkIn.slice(5)}→${b.checkOut.slice(5)}</span>${op?`<span>· ${op}</span>`:""}</div>
+  </div>`;
+}
+function selectBooking(id){ SELBOOK = SELBOOK===id?null:id; SELGER=null; renderMapSide(); drawGers(); }
+function recBox(b){
+  const r=recommendGers(b);
+  if(!r.gers.length) return `<div class="rec-box"><div class="rt">${t("smartAlloc")}</div><div class="muted">No fit available.</div></div>`;
+  return `<div class="rec-box">
+    <div class="rt">✦ ${t("recommend")}: ${r.gers.map(g=>g.code).join(" + ")}</div>
+    <div class="muted" style="font-size:12px">${r.reason} · ${r.waste} ${t("waste")}</div>
+    <button class="btn sm" style="margin-top:9px;width:100%" onclick="assign('${b.id}')">${t("assignRec")}</button>
+  </div>`;
+}
+/* ---- SMART ALLOCATION (pure) ---- */
+function recommendGers(b){
+  const avail=STATE.gers.filter(g=>g.status==="available");
+  // 1) single ger that fits with least spare capacity
+  const singles=avail.filter(g=>g.capacity>=b.party).sort((a,c)=>a.capacity-c.capacity);
+  if(singles.length){ const g=singles[0];
+    return {gers:[g],waste:g.capacity-b.party,reason:LANG==="mn"?`Нэг гэр, хамгийн тохирох багтаамж`:`Single ger, tightest fit`}; }
+  // 2) multi-ger: pick largest first, then nearest neighbours, until party covered
+  const pool=[...avail].sort((a,c)=>c.capacity-a.capacity);
+  if(!pool.length) return {gers:[],waste:0,reason:""};
+  const chosen=[pool[0]]; let cap=pool[0].capacity;
+  const rest=pool.slice(1);
+  while(cap<b.party && rest.length){
+    // nearest to the cluster centroid
+    const cx=chosen.reduce((s,g)=>s+g.x,0)/chosen.length, cy=chosen.reduce((s,g)=>s+g.y,0)/chosen.length;
+    rest.sort((a,c)=>(Math.hypot(a.x-cx,a.y-cy))-(Math.hypot(c.x-cx,c.y-cy)));
+    const next=rest.shift(); chosen.push(next); cap+=next.capacity;
+  }
+  return {gers:chosen,waste:Math.max(0,cap-b.party),
+    reason:LANG==="mn"?`${chosen.length} зэргэлдээ гэр`:`${chosen.length} adjacent gers, grouped`};
+}
+function assign(bid){
+  const b=STATE.bookings.find(x=>x.id===bid); const r=recommendGers(b);
+  if(!r.gers.length){ toast("No fit"); return; }
+  r.gers.forEach(g=>{ g.status="occupied"; g.currentBooking=b.ref; });
+  b.status="confirmed"; b.gers=r.gers.map(g=>g.id);
+  // auto invoice
+  STATE.invoices.unshift({id:"i"+Date.now(),number:"INV-2026-"+(92+STATE.invoices.length),
+    booking:b.ref,operator:b.operator,amount:b.amount,status:b.pay,issued:"2026-06-03"});
+  logAudit("assigned",`${b.ref} → ${r.gers.map(g=>g.code).join("+")}`,`${t("invoice")} auto-generated · ${fmt(b.amount)}`);
+  SELBOOK=null; toast(`${b.ref} → ${r.gers.map(g=>g.code).join(" + ")} ✓`);
+  renderMapSide(); drawGers();
+}
+function gerPanel(g){
+  const f=g.features;
+  const feats=[f.stove&&t("stove"),f.ensuite&&t("ensuite"),f.view&&t("view"),f.heating&&t("heating")].filter(Boolean);
+  const cycle=["available","occupied","cleaning"];
+  return `<div class="side-panel">
+    <div class="panel-title">${g.code} <button class="btn ghost sm" onclick="SELGER=null;renderMapSide();drawGers()">✕</button></div>
+    <div class="kv"><span>${t("capacity")}</span><b>${g.capacity} ${t("party").toLowerCase()}</b></div>
+    <div class="kv"><span>${t("status")}</span><span class="chip ${g.status==='available'?'g':g.status==='occupied'?'r':'a'}">${t(g.status)}</span></div>
+    <div class="kv"><span>${t("currentGuest")}</span><b>${g.currentBooking||`<span class="muted">${t("noGuest")}</span>`}</b></div>
+    <div><div class="muted" style="font-size:12px;margin:8px 0 5px">${t("features")}</div>
+      <div class="feat-tags">${feats.map(x=>`<span class="ft">${x}</span>`).join("")}</div></div>
+    ${canDo("gers")?`<div><div class="muted" style="font-size:12px;margin:10px 0 5px">${t("status")}</div>
+      <div class="status-cycle">${cycle.map(s=>`<button class="sc-btn ${g.status===s?'on '+s:''}" onclick="setStatus('${g.id}','${s}')">${t(s)}</button>`).join("")}</div></div>`:""}
+  </div>`;
+}
+function setStatus(gid,s){
+  const g=STATE.gers.find(x=>x.id===gid); if(g.status===s)return;
+  g.status=s; if(s!=="occupied")g.currentBooking=null;
+  logAudit("statusChanged",`${g.code} → ${s}`,"");
+  toast(`${g.code} → ${t(s)}`); renderMapSide(); drawGers();
+}
+
+/* ---------- Bookings table ---------- */
+function vBookings(){
+  const rows=STATE.bookings.map(b=>{
+    const op=b.operator?STATE.operators.find(o=>o.id===b.operator).name:"—";
+    return `<tr>
+      <td><b>${b.ref}</b></td>
+      <td><span class="src ${b.channel}">${b.channel}</span></td>
+      <td>${b.guest}</td><td>${op}</td>
+      <td>${b.party} / ${b.nights}${t("nights")[0]}</td>
+      <td>${b.checkIn.slice(5)} → ${b.checkOut.slice(5)}</td>
+      <td>${fmt(b.amount)}</td>
+      <td><span class="tag ${b.pay}">${t(b.pay)}</span></td>
+      <td><span class="tag ${b.status}">${t(b.status)}</span></td>
+    </tr>`;}).join("");
+  document.getElementById("main").innerHTML=head(t("bookings"),`${STATE.bookings.length} ${t("bookings").toLowerCase()}`,
+    `<button class="btn ghost sm" onclick="go('gers')">${t("smartAlloc")} →</button>`)
+  +`<div class="panel"><table>
+      <tr><th>${t("ref")}</th><th>${t("channel")}</th><th>${t("guest")}</th><th>${t("operator")}</th>
+      <th>${t("party")}/${t("nights")}</th><th>${t("dates")}</th><th>${t("amount")}</th><th>${t("payStatus")}</th><th>${t("status")}</th></tr>
+      ${rows}</table></div>`;
+}
+
+/* ---------- Operators (CRM-lite) ---------- */
+function vOperators(){
+  document.getElementById("main").innerHTML=head(t("operators"),"CRM",``)
+  +`<div class="grid3">${STATE.operators.map(o=>`
+    <div class="panel card-pad">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><div class="sec-title">${o.name}</div><div class="muted" style="font-size:12px">${o.country} · ${o.contact}</div></div>
+        <span class="chip ${o.contract?'g':'r'}">${o.contract?t("contractOk"):t("contractNone")}</span>
+      </div>
+      <div class="kv" style="margin-top:12px"><span>${t("bookingsCount")}</span><b>${o.bookings}</b></div>
+      <div class="kv"><span>${t("totalRev")}</span><b>${fmt(o.revenue)}</b></div>
+      <div class="kv"><span>${t("email")||"Email"}</span><span class="muted" style="font-size:12px">${o.email}</span></div>
+      <button class="btn ghost sm" style="margin-top:12px;width:100%">${t("manage")} →</button>
+    </div>`).join("")}</div>`;
+}
+
+/* ---------- Finance ---------- */
+function vFinance(){
+  const maxv=Math.max(...REV_SERIES.map(r=>r.rev));
+  const bars=REV_SERIES.map(r=>`
+    <div class="bar-row"><span class="nm">${r.m}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${r.rev/maxv*100}%"></div></div>
+      <span class="vl">₮${r.rev}M</span></div>
+    <div class="bar-row"><span class="nm muted">${t("expense").toLowerCase()}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${r.exp/maxv*100}%;background:#d9b48a"></div></div>
+      <span class="vl muted">₮${r.exp}M</span></div>`).join("");
+  const inv=STATE.invoices;
+  const sum=s=>inv.filter(i=>i.status===s).reduce((a,i)=>a+i.amount,0);
+  const invRows=inv.map(i=>`<tr><td><b>${i.number}</b></td><td>${i.booking}</td>
+    <td>${i.operator?STATE.operators.find(o=>o.id===i.operator).name:"—"}</td>
+    <td>${fmt(i.amount)}</td><td><span class="tag ${i.status}">${t(i.status)}</span></td><td class="muted">${i.issued}</td></tr>`).join("");
+  document.getElementById("main").innerHTML=head(t("finance"),"",`<button class="btn ghost sm">${t("export")} CSV</button>`)
+  +`<div class="grid3" style="margin-bottom:16px">
+      <div class="tile"><div class="lbl">${t("paid")}</div><div class="big" style="color:var(--green)">${fmt(sum("paid"))}</div></div>
+      <div class="tile"><div class="lbl">${t("advance")}</div><div class="big" style="color:var(--amber)">${fmt(sum("advance"))}</div></div>
+      <div class="tile"><div class="lbl">${t("pending")}</div><div class="big" style="color:var(--red)">${fmt(sum("pending"))}</div></div>
+    </div>
+    <div class="grid2">
+      <div class="panel card-pad"><div class="sec-title">${t("revExpense")}</div><div style="margin-top:10px">${bars}</div></div>
+      <div class="panel"><div class="card-pad" style="padding-bottom:0"><div class="sec-title">${t("invStatus")}</div></div>
+        <table style="margin-top:8px"><tr><th>${t("invoice")}</th><th>${t("ref")}</th><th>${t("operator")}</th><th>${t("amount")}</th><th>${t("status")}</th><th>${t("date")}</th></tr>${invRows}</table></div>
+    </div>`;
+}
+
+/* ---------- Kitchen ---------- */
+function vKitchen(){
+  const inc=STATE.kitchen.filter(k=>k.type==="income").reduce((s,k)=>s+k.amount,0);
+  const exp=STATE.kitchen.filter(k=>k.type==="expense").reduce((s,k)=>s+k.amount,0);
+  const rows=STATE.kitchen.map(k=>`<tr><td class="muted">${k.date}</td>
+    <td><span class="chip ${k.type==='income'?'g':'r'}">${t(k.type)}</span></td>
+    <td>${t(k.category)||k.category}</td><td>${k.note}</td>
+    <td style="font-weight:600;color:${k.type==='income'?'var(--green)':'var(--red)'}">${k.type==='income'?'+':'−'}${fmt(k.amount)}</td>
+    <td class="muted">${k.user}</td></tr>`).join("");
+  document.getElementById("main").innerHTML=head(t("kitchen"),t("kitchenPnl"),"")
+  +`<div class="grid3" style="margin-bottom:16px">
+      <div class="tile"><div class="lbl">${t("income")}</div><div class="big" style="color:var(--green)">${fmt(inc)}</div></div>
+      <div class="tile"><div class="lbl">${t("expense")}</div><div class="big" style="color:var(--red)">${fmt(exp)}</div></div>
+      <div class="tile"><div class="lbl">${t("profit")}</div><div class="big">${fmt(inc-exp)}</div></div>
+    </div>
+    <div class="panel">
+      <div class="card-pad" style="padding-bottom:12px;border-bottom:1px solid var(--line)">
+        <div class="sec-title">${t("quickAdd")}</div>
+        <div class="form-row">
+          <select id="kt"><option value="income">${t("income")}</option><option value="expense">${t("expense")}</option></select>
+          <select id="kc"><option value="restaurant">${t("restaurant")}</option><option value="groceries">${t("groceries")}</option><option value="wages">${t("wages")}</option><option value="utilities">${t("utilities")}</option></select>
+          <input id="kn" placeholder="${t("note")}" style="flex:1;min-width:140px"/>
+          <input id="ka" type="number" placeholder="₮" style="width:120px"/>
+          <button class="btn sm" onclick="addKitchen()">${t("add")}</button>
+        </div>
+      </div>
+      <table><tr><th>${t("date")}</th><th>${t("category")}</th><th>${t("category")}</th><th>${t("note")}</th><th>${t("amount")}</th><th>${t("user")}</th></tr>${rows}</table>
+    </div>`;
+}
+function addKitchen(){
+  const type=document.getElementById("kt").value, cat=document.getElementById("kc").value;
+  const note=document.getElementById("kn").value||"—", amt=parseInt(document.getElementById("ka").value||"0",10);
+  if(!amt){ toast("Enter amount"); return; }
+  STATE.kitchen.unshift({id:"k"+Date.now(),date:"2026-06-03",type,category:cat,note,amount:amt,user:CURRENT.name});
+  logAudit("addedTxn",`Kitchen ${type} ${fmt(amt)}`,note);
+  toast(`${t("add")} ✓`); vKitchen();
+}
+
+/* ---------- Reports ---------- */
+function vReports(){
+  const totalRev=REV_SERIES.reduce((s,r)=>s+r.rev,0), totalExp=REV_SERIES.reduce((s,r)=>s+r.exp,0);
+  const chan={};STATE.bookings.forEach(b=>chan[b.channel]=(chan[b.channel]||0)+1);
+  ["operator","website","phone","walkin"].forEach(c=>chan[c]=chan[c]||0);
+  const cmax=Math.max(...Object.values(chan),1);
+  const chanBars=Object.entries(chan).map(([k,v])=>`
+    <div class="bar-row"><span class="nm">${k}</span><div class="bar-track"><div class="bar-fill" style="width:${v/cmax*100}%"></div></div><span class="vl">${v}</span></div>`).join("");
+  document.getElementById("main").innerHTML=head(t("reports"),t("seasonReport"),`<button class="btn ghost sm">${t("export")} PDF</button>`)
+  +`<div class="grid3" style="margin-bottom:16px">
+      <div class="tile"><div class="lbl">${t("totalRev")} 2026</div><div class="big" style="color:var(--green)">₮${totalRev}M</div></div>
+      <div class="tile"><div class="lbl">${t("expense")}</div><div class="big" style="color:var(--red)">₮${totalExp}M</div></div>
+      <div class="tile"><div class="lbl">${t("profit")}</div><div class="big">₮${totalRev-totalExp}M</div><div class="sm"><span class="chip g">${Math.round((totalRev-totalExp)/totalRev*100)}% margin</span></div></div>
+    </div>
+    <div class="grid2">
+      <div class="panel card-pad"><div class="sec-title">${t("byChannel")}</div><div style="margin-top:12px">${chanBars}</div></div>
+      <div class="panel card-pad"><div class="sec-title">${t("seasonReport")}</div>
+        <div class="kv" style="margin-top:8px"><span>Occupancy avg</span><b>71%</b></div>
+        <div class="kv"><span>Total bookings</span><b>37</b></div>
+        <div class="kv"><span>Avg booking value</span><b>${fmt(4900000)}</b></div>
+        <div class="kv"><span>Top operator</span><b>Nomadic Trails GmbH</b></div>
+        <div class="kv"><span>Kitchen net</span><b>${fmt(11800000)}</b></div>
+        <div class="ph" style="margin-top:14px">📄 ${t("export")}: PDF / Excel / CSV — Phase 2 one-click export</div>
+      </div>
+    </div>`;
+}
+
+/* ---------- Audit ---------- */
+function vAudit(){
+  const rows=STATE.audit.map(a=>`<tr><td class="muted" style="white-space:nowrap">${a.ts}</td>
+    <td><span class="avatar" style="width:22px;height:22px;font-size:10px;display:inline-flex">${a.user.split(" ").pop()[0]}</span> ${a.user}</td>
+    <td><span class="badge-soft">${a.role}</span></td>
+    <td><b>${t(a.action)||a.action}</b></td><td>${a.entity}</td><td class="muted">${a.detail}</td></tr>`).join("");
+  document.getElementById("main").innerHTML=head(t("audit"),`${STATE.audit.length} ${LANG==="mn"?"бичлэг":"entries"}`,"")
+  +`<div class="panel"><table>
+    <tr><th>${t("time")}</th><th>${t("user")}</th><th>Role</th><th>${t("action")}</th><th>Entity</th><th>${t("detail")}</th></tr>${rows}</table></div>`;
+}
+
+/* ---------- Settings / Website (Phase 2 stub) ---------- */
+function vSettings(){
+  document.getElementById("main").innerHTML=head(t("settings"),"Phase 2","")
+  +`<div class="grid2">
+    <div class="panel card-pad"><div class="sec-title">🌐 Public booking site (MN / EN)</div>
+      <p class="muted" style="font-size:13px;line-height:1.6">${t("websiteNote")}</p>
+      <div class="ph" style="margin-top:10px">Landing · Rooms · Online booking · Gallery · Promotions</div></div>
+    <div class="panel card-pad"><div class="sec-title">👥 Users & roles</div>
+      <div class="kv" style="margin-top:6px"><span>${USERS[0].name}</span><span class="badge-soft">admin</span></div>
+      <div class="kv"><span>${USERS[1].name}</span><span class="badge-soft">manager</span></div>
+      <div class="kv"><span>${USERS[2].name}</span><span class="badge-soft">kitchen</span></div>
+      <div class="kv"><span>${USERS[3].name}</span><span class="badge-soft">worker</span></div>
+      <div class="ph" style="margin-top:12px">Add up to 5 users · per-section permissions</div></div>
+  </div>`;
+}
+
+/* ---------- language switch ---------- */
+function setLang(l){
+  LANG=l;
+  document.getElementById("lang-en").classList.toggle("on",l==="en");
+  document.getElementById("lang-mn").classList.toggle("on",l==="mn");
+  if(CURRENT){ document.getElementById("u-rl").textContent=CURRENT.label[LANG]; buildNav(); render(); }
+  else renderRoles();
+}
+
+/* ---------- boot ---------- */
+renderRoles();
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# PocketBase runtime data (generated from pb_migrations on first serve - NOT source)
+backend/pb_data/
+
+# PocketBase binary (downloaded per-platform; CI fetches its own)
+backend/pocketbase
+backend/pocketbase.exe
+
+# Built admin bundle (produced by `cd app && npm run build`)
+backend/pb_public/admin/
+
+# Local run/smoke artifacts
+_run_shots/
+*.log
+backend/.runtoken
+
+# Vite
+app/dist/
+*.timestamp-*.mjs
+
+# OS noise
+.DS_Store
+Thumbs.db

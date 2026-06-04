@@ -1,0 +1,28 @@
+# GerOS — Caddy reverse proxy. Automatic HTTPS via Let's Encrypt.
+# install.sh substitutes YOUR_DOMAIN; edit by hand if deploying manually.
+YOUR_DOMAIN {
+	encode gzip
+	reverse_proxy 127.0.0.1:8090
+
+	# realtime subscriptions are SSE — make sure they aren't buffered
+	@sse path /api/realtime
+	reverse_proxy @sse 127.0.0.1:8090 {
+		flush_interval -1
+	}
+
+	# security headers. PocketBase sees the real client IP via X-Forwarded-For,
+	# which the 1717200100_hardening migration tells it to trust.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		-Server
+	}
+
+	# Optional, stricter defense-in-depth. Left commented because a wrong CSP
+	# silently breaks the app, and "not babysat" means it must not. Enable and
+	# test against /, /admin/ and /_/ before trusting it:
+	# header Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'"
+}

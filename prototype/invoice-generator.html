@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GerOS — PDF → Invoice Generator</title>
+<style>
+  :root{
+    --bg:#f3f1ea;--card:#fff;--ink:#1c1b18;--muted:#76726a;--line:#e7e3d9;
+    --accent:#2e7d6f;--accent-ink:#1d5a4f;--green:#2faa5a;--red:#d9534f;--amber:#e8a13c;
+    --shadow:0 1px 2px rgba(20,18,12,.05),0 8px 24px rgba(20,18,12,.06);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-size:14px;-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer;border:none}
+  .logo{width:30px;height:30px;border-radius:8px;background:var(--accent);position:relative;flex:none;display:inline-block}
+  .logo:before{content:"";position:absolute;inset:6px 5px;border-bottom:3px solid #fff;border-radius:0 0 2px 2px}
+  .logo:after{content:"";position:absolute;left:7px;right:7px;top:8px;height:8px;background:#fff;clip-path:polygon(50% 0,100% 100%,0 100%)}
+  header{background:#fbfaf6;border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+  header .brand{display:flex;align-items:center;gap:11px}
+  header h1{font-size:17px;margin:0;letter-spacing:-.3px}
+  header .sub{font-size:12px;color:var(--muted)}
+  .btn{background:var(--accent);color:#fff;border-radius:11px;padding:10px 17px;font-weight:600;font-size:13px;box-shadow:var(--shadow)}
+  .btn:hover{background:var(--accent-ink)}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .wrap{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:18px 24px;max-width:1380px;margin:0 auto;align-items:start}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+  .panel-h{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+  .panel-h .t{font-weight:700;font-size:14px}
+  .import-banner{margin:14px 16px 0;background:#eef6f3;border:1px solid #cfe6df;border-radius:11px;padding:10px 13px;font-size:12.5px;color:var(--accent-ink);display:flex;gap:9px;align-items:center}
+  .op-meta{padding:12px 16px;font-size:13px;line-height:1.7}
+  .op-meta b{font-weight:600}.op-meta .muted{color:var(--muted)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;padding:9px 12px;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);border-bottom:1px solid var(--line);background:#fbfaf6;font-weight:700}
+  td{padding:8px 12px;border-bottom:1px solid var(--line)}
+  tr:last-child td{border-bottom:none}
+  .cancelled td{opacity:.45;text-decoration:line-through}
+  .cx{font-size:10px;font-weight:700;color:var(--red);background:#fbeceb;padding:2px 7px;border-radius:6px;text-decoration:none;display:inline-block}
+  .ba{font-size:10px;font-weight:700;color:#6b46c1;background:#f0ecfb;padding:2px 7px;border-radius:6px}
+  input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent)}
+  .price-grid{padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .pf{display:flex;flex-direction:column;gap:4px}
+  .pf label{font-size:11px;color:var(--muted);font-weight:600}
+  .pf .ig{display:flex;align-items:center;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff}
+  .pf .ig span{padding:0 9px;color:var(--muted);font-size:13px;background:#fbfaf6;align-self:stretch;display:flex;align-items:center;border-right:1px solid var(--line)}
+  .pf input{border:none;padding:8px 10px;font-size:13px;width:100%;font-family:inherit}
+  .pf input:focus{outline:none}
+  .opts{padding:0 16px 14px;display:flex;gap:16px;align-items:center;font-size:13px;color:var(--muted)}
+  .opts label{display:flex;align-items:center;gap:7px;cursor:pointer}
+
+  /* invoice */
+  #invoice{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:30px 32px;font-size:13px}
+  .inv-top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--accent);padding-bottom:16px;margin-bottom:18px}
+  .inv-from .nm{font-size:19px;font-weight:800;letter-spacing:-.4px;color:var(--accent-ink)}
+  .inv-from .ln{font-size:12px;color:var(--muted);line-height:1.6}
+  .inv-title{text-align:right}
+  .inv-title .big{font-size:26px;font-weight:800;letter-spacing:1px}
+  .inv-title .mn{font-size:13px;color:var(--muted);font-weight:600;letter-spacing:.5px}
+  .inv-parties{display:flex;justify-content:space-between;gap:24px;margin-bottom:18px;font-size:12.5px;line-height:1.7}
+  .inv-parties .lab{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;margin-bottom:3px}
+  .inv-table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:12px}
+  .inv-table th{background:var(--accent);color:#fff;padding:9px 10px;font-size:10.5px;border:none}
+  .inv-table th.r,.inv-table td.r{text-align:right}
+  .inv-table td{padding:8px 10px;border-bottom:1px solid var(--line)}
+  .inv-table .code{font-weight:700}
+  .inv-table .desc{color:var(--muted);font-size:11.5px}
+  .totals{display:flex;justify-content:flex-end;margin-bottom:18px}
+  .totals .box{width:300px}
+  .totrow{display:flex;justify-content:space-between;padding:6px 0;font-size:13px}
+  .totrow.grand{border-top:2px solid var(--ink);margin-top:6px;padding-top:10px;font-size:18px;font-weight:800}
+  .totrow .muted{color:var(--muted)}
+  .inv-foot{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:16px;font-size:11.5px;color:var(--muted)}
+  .sign{text-align:center}.sign .line{width:160px;border-top:1px solid var(--ink);margin-top:34px;padding-top:5px}
+  .pill{font-size:11px;background:#eef6f3;color:var(--accent-ink);padding:3px 9px;border-radius:7px;font-weight:600}
+  @media print{
+    body{background:#fff}
+    header,.col-left,.no-print,.panel-h .pill{display:none !important}
+    .wrap{display:block;padding:0;max-width:none}
+    #invoice{border:none;box-shadow:none;border-radius:0;padding:0}
+    .right-col{display:block}
+  }
+  @media(max-width:1000px){.wrap{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="logo"></span>
+    <div><h1>GerOS · PDF → Invoice</h1><div class="sub">Tour-operator request in, camp invoice out</div></div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn ghost no-print" onclick="window.print()">⤓ Save / Print PDF</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- LEFT: parsed request + pricing -->
+  <div class="col-left">
+    <div class="panel">
+      <div class="panel-h"><span class="t">1 · Imported operator request</span><span class="pill" id="trip-pill"></span></div>
+      <div class="import-banner">📄 Parsed from <b style="margin:0 4px">Tsaidam 2026 — CHAM 2609, 2610, 2613.pdf</b> · 3 cancelled trips auto-excluded</div>
+      <div class="op-meta" id="op-meta"></div>
+      <div style="max-height:300px;overflow:auto">
+        <table id="trip-table"></table>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:18px">
+      <div class="panel-h"><span class="t">2 · Camp price list</span><span class="sub" style="font-size:11px;color:var(--muted)">editable — your rates</span></div>
+      <div class="price-grid" id="price-grid"></div>
+      <div class="opts">
+        <label><input type="checkbox" id="vat" onchange="recompute()"> Add VAT 10%</label>
+        <label><input type="checkbox" id="byTrip" onchange="recompute()" checked> Per-trip line items</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: live invoice -->
+  <div class="right-col">
+    <div id="invoice"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   Parsed structure of the REAL operator PDF (Актив Адвенчер Турс → Цайдам).
+   In production this object is produced by the PDF extraction pipeline;
+   here it is the exact parse of the uploaded file.
+   ============================================================ */
+const REQUEST = {
+  operator:{
+    name:"Актив Адвенчер Турс Монгол ХХК", nameEn:"Active Adventure Tours Mongolia LLC",
+    ref:"№ 002/26", date:"2026.04.03",
+    address:"Улаанбаатар-15160, Монгол · Ш/х 166",
+    phone:"976-11-354662", email:"info@tourmongolia.com", web:"www.tourmongolia.com",
+    manager:"Г. Өнөр", managerPhone:"99058467"
+  },
+  camp:{ name:"Цайдам жуулчны бааз", nameEn:"Tsaidam Tourist Camp",
+    reg:"Регистр: __________", account:"Дансны дугаар: __________", bank:"Хаан банк" }
+};
+/* trips: gers1=1-bed, gers2=2-bed, gerStaff=staff ger, nights, bf/lunch/dinner = meal headcounts */
+function cham(code,y,m,d,cancelled){ return {code,arrive:`2026-${m}-${d}`,depart:null,
+  gers1:0,gers2:0,gerStaff:0,nights:0,bf:0,lunch:17,dinner:0,pax:13,staff:4,note:cancelled?"цуцлагдсан":"",cancelled:!!cancelled,kind:"lunch"};}
+function barad(arrM,arrD,depM,depD){ return {code:"Ba-Rad-2601",arrive:`2026-${arrM}-${arrD}`,depart:`2026-${depM}-${depD}`,
+  gers1:2,gers2:4,gerStaff:1,nights:1,bf:14,lunch:14,dinner:14,pax:10,staff:4,note:"Дугуйн аялал / Bike trip",cancelled:false,kind:"stay"};}
+const TRIPS = [
+  cham("CHAM-2601","05","21"), cham("CHAM-2602","05","28"), cham("CHAM-2603","06","04"),
+  cham("CHAM-2604","06","11"), cham("CHAM-2605","06","18"), cham("CHAM-2606","06","25"),
+  barad("07","01","07","02"),
+  cham("CHAM-2607","07","02"), cham("CHAM-2609","07","09",true), cham("CHAM-2610","07","15",true),
+  cham("CHAM-2612","07","23"), cham("CHAM-2613","07","30",true), cham("CHAM-2614","08","06"),
+  cham("CHAM-2615","08","13"),
+  barad("08","19","08","20"),
+  cham("CHAM-2616","08","20"), cham("CHAM-2617","08","27"), cham("CHAM-2618","09","03"),
+  cham("CHAM-2619","09","10"), cham("CHAM-2620","09","17")
+];
+/* each trip gets an "include" flag; cancelled default off */
+TRIPS.forEach(t=>t.include=!t.cancelled);
+
+/* default camp prices (MNT) — editable */
+const PRICES = { ger1:120000, ger2:160000, gerStaff:100000, bf:25000, lunch:35000, dinner:40000 };
+const PLABEL = {
+  ger1:["1-bed ger / night","1 ортой гэр"], ger2:["2-bed ger / night","2 ортой гэр"],
+  gerStaff:["Staff ger / night","Ажилтны гэр"], bf:["Breakfast / pax","Өглөөний хоол"],
+  lunch:["Lunch / pax","Өдрийн хоол"], dinner:["Dinner / pax","Оройн хоол"]
+};
+const fmt = n => "₮" + Math.round(n).toLocaleString("en-US");
+const dShort = s => s ? s.slice(5).replace("-","/") : "";
+
+/* ---- line total for a trip ---- */
+function tripTotal(t){
+  return t.gers1*t.nights*PRICES.ger1 + t.gers2*t.nights*PRICES.ger2 + t.gerStaff*t.nights*PRICES.gerStaff
+       + t.bf*PRICES.bf + t.lunch*PRICES.lunch + t.dinner*PRICES.dinner;
+}
+function tripDesc(t){
+  if(t.kind==="lunch") return `Lunch × ${t.lunch} (${t.pax}+${t.staff} pax)`;
+  const gers=[]; if(t.gers1)gers.push(`${t.gers1}×1-bed`); if(t.gers2)gers.push(`${t.gers2}×2-bed`); if(t.gerStaff)gers.push(`${t.gerStaff}×staff`);
+  return `${gers.join(", ")} · ${t.nights}n · B${t.bf}/L${t.lunch}/D${t.dinner}`;
+}
+
+/* ---------- render left: operator meta + trip table ---------- */
+function renderLeft(){
+  const o=REQUEST.operator;
+  document.getElementById("op-meta").innerHTML=`
+    <div><b>${o.name}</b> <span class="muted">(${o.nameEn})</span></div>
+    <div class="muted">${o.address} · ☎ ${o.phone}</div>
+    <div class="muted">${o.email} · ${o.ref} · ${o.date}</div>
+    <div class="muted">Manager: ${o.manager} /${o.managerPhone}</div>`;
+  const active=TRIPS.filter(t=>!t.cancelled).length;
+  document.getElementById("trip-pill").textContent=`${TRIPS.length} trips · ${active} active`;
+  const rows=TRIPS.map((t,i)=>`
+    <tr class="${t.cancelled?'cancelled':''}">
+      <td><input type="checkbox" ${t.include?'checked':''} ${t.cancelled?'disabled':''} onchange="toggle(${i})"></td>
+      <td class="code" style="font-weight:600">${t.code} ${t.kind==='stay'?'<span class="ba">STAY</span>':''}</td>
+      <td>${dShort(t.arrive)}${t.depart?'→'+dShort(t.depart):''}</td>
+      <td>${t.kind==='lunch'?`L×${t.lunch}`:`${t.gers1+t.gers2+t.gerStaff} gers`}</td>
+      <td>${t.cancelled?'<span class="cx">cancelled</span>':fmt(tripTotal(t))}</td>
+    </tr>`).join("");
+  document.getElementById("trip-table").innerHTML=
+    `<tr><th></th><th>Code</th><th>Dates</th><th>Service</th><th>Line</th></tr>${rows}`;
+}
+function toggle(i){ TRIPS[i].include=!TRIPS[i].include; recompute(); }
+
+/* ---------- render price inputs ---------- */
+function renderPrices(){
+  document.getElementById("price-grid").innerHTML=Object.keys(PRICES).map(k=>`
+    <div class="pf"><label>${PLABEL[k][0]} · ${PLABEL[k][1]}</label>
+      <div class="ig"><span>₮</span><input type="number" value="${PRICES[k]}" oninput="setPrice('${k}',this.value)"></div>
+    </div>`).join("");
+}
+function setPrice(k,v){ PRICES[k]=parseInt(v||"0",10); renderLeft(); recompute(); }
+
+/* ---------- invoice ---------- */
+function recompute(){
+  const o=REQUEST.operator, c=REQUEST.camp;
+  const chosen=TRIPS.filter(t=>t.include);
+  const byTrip=document.getElementById("byTrip").checked;
+  let rowsHtml="", subtotal=0;
+
+  if(byTrip){
+    rowsHtml=chosen.map(t=>{ const amt=tripTotal(t); subtotal+=amt;
+      return `<tr><td class="code">${t.code}</td><td>${dShort(t.arrive)}${t.depart?'→'+dShort(t.depart):''}</td>
+        <td class="desc">${tripDesc(t)}${t.note?` · <i>${t.note}</i>`:''}</td><td class="r">${fmt(amt)}</td></tr>`;}).join("");
+  } else {
+    // aggregate by service line
+    const agg={ger1:0,ger2:0,gerStaff:0,bf:0,lunch:0,dinner:0};
+    chosen.forEach(t=>{agg.ger1+=t.gers1*t.nights;agg.ger2+=t.gers2*t.nights;agg.gerStaff+=t.gerStaff*t.nights;agg.bf+=t.bf;agg.lunch+=t.lunch;agg.dinner+=t.dinner;});
+    const lines=[["1-bed ger-nights","ger1"],["2-bed ger-nights","ger2"],["Staff ger-nights","gerStaff"],["Breakfasts","bf"],["Lunches","lunch"],["Dinners","dinner"]];
+    rowsHtml=lines.filter(l=>agg[l[1]]>0).map(l=>{const q=agg[l[1]],amt=q*PRICES[l[1]];subtotal+=amt;
+      return `<tr><td class="code">${l[0]}</td><td>${q}</td><td class="desc">@ ${fmt(PRICES[l[1]])}</td><td class="r">${fmt(amt)}</td></tr>`;}).join("");
+  }
+  const vatOn=document.getElementById("vat").checked;
+  const vat=vatOn?subtotal*0.1:0;
+  const grand=subtotal+vat;
+  const today="2026-06-03";
+  const invNo="INV-2026-"+String(102).padStart(3,"0");
+
+  document.getElementById("invoice").innerHTML=`
+    <div class="inv-top">
+      <div class="inv-from">
+        <div class="nm">${c.name}</div>
+        <div class="ln">${c.nameEn}<br>${c.bank} · ${c.account.replace('Дансны дугаар:','Acc:')}<br>${c.reg.replace('Регистр:','Reg:')}</div>
+      </div>
+      <div class="inv-title"><div class="big">INVOICE</div><div class="mn">НЭХЭМЖЛЭХ</div>
+        <div class="ln" style="margin-top:8px;text-align:right;color:var(--muted)">${invNo}<br>${today}</div></div>
+    </div>
+    <div class="inv-parties">
+      <div><div class="lab">Bill to · Нэхэмжлэх</div>
+        <b>${o.name}</b><br><span style="color:var(--muted)">${o.address}<br>${o.phone} · ${o.email}<br>${o.manager} /${o.managerPhone}</span></div>
+      <div style="text-align:right"><div class="lab">Operator ref · Лавлагаа</div>
+        ${o.ref}<br><span style="color:var(--muted)">${o.date}</span><br>
+        <span class="pill" style="margin-top:6px;display:inline-block">${chosen.length} trips · 2026 season</span></div>
+    </div>
+    <table class="inv-table">
+      <tr><th>${byTrip?'Trip code':'Service'}</th><th>${byTrip?'Dates':'Qty'}</th><th>Description</th><th class="r">Amount</th></tr>
+      ${rowsHtml}
+    </table>
+    <div class="totals"><div class="box">
+      <div class="totrow"><span class="muted">Subtotal · Дүн</span><span>${fmt(subtotal)}</span></div>
+      ${vatOn?`<div class="totrow"><span class="muted">VAT 10% · НӨАТ</span><span>${fmt(vat)}</span></div>`:''}
+      <div class="totrow grand"><span>TOTAL</span><span>${fmt(grand)}</span></div>
+      <div class="totrow"><span class="muted" style="font-size:11px">Excludes 3 cancelled trips (CHAM-2609/2610/2613)</span></div>
+    </div></div>
+    <div class="inv-foot">
+      <div>Payment within 14 days · 14 хоногт төлнө<br>Issued by GerOS · ${today}</div>
+      <div class="sign">${REQUEST.camp.name}<div class="line">Signature · Гарын үсэг</div></div>
+    </div>`;
+}
+
+/* boot */
+renderLeft(); renderPrices(); recompute();
+</script>
+</body>
+</html>

@@ -1,0 +1,585 @@
+/// <reference path="../pb_data/types.d.ts" />
+//
+// AUTO-GENERATED from backend/pb_schema.json by scripts/gen-init-migration.mjs.
+// Do NOT edit by hand - re-run the generator instead.
+//
+// Self-provisioning: on first `serve` this creates every business collection and
+// patches the `users` collection (full_name + role + admin-only listing) so a
+// fresh box needs no manual "Import collections" step. Idempotent + reversible.
+
+migrate((app) => {
+  const collections = [
+  {
+    "id": "gers0000000001a",
+    "name": "gers",
+    "type": "base",
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.role = 'admin' || @request.auth.role = 'manager'",
+    "updateRule": "@request.auth.role = 'admin' || @request.auth.role = 'manager' || @request.auth.role = 'worker'",
+    "deleteRule": "@request.auth.role = 'admin'",
+    "fields": [
+      {
+        "name": "code",
+        "type": "text",
+        "required": true,
+        "max": 20
+      },
+      {
+        "name": "name",
+        "type": "text",
+        "max": 80
+      },
+      {
+        "name": "capacity",
+        "type": "number",
+        "required": true,
+        "min": 1,
+        "onlyInt": true
+      },
+      {
+        "name": "bed_type",
+        "type": "select",
+        "maxSelect": 1,
+        "values": [
+          "1bed",
+          "2bed",
+          "family"
+        ]
+      },
+      {
+        "name": "status",
+        "type": "select",
+        "required": true,
+        "maxSelect": 1,
+        "values": [
+          "available",
+          "occupied",
+          "cleaning"
+        ]
+      },
+      {
+        "name": "x",
+        "type": "number"
+      },
+      {
+        "name": "y",
+        "type": "number"
+      },
+      {
+        "name": "features",
+        "type": "json",
+        "maxSize": 2000
+      },
+      {
+        "name": "current_booking",
+        "type": "text",
+        "max": 40
+      },
+      {
+        "name": "created",
+        "type": "autodate",
+        "onCreate": true
+      },
+      {
+        "name": "updated",
+        "type": "autodate",
+        "onCreate": true,
+        "onUpdate": true
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_ger_code` ON `gers` (`code`)"
+    ]
+  },
+  {
+    "id": "tourops00000001",
+    "name": "tour_operators",
+    "type": "base",
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.role = 'admin' || @request.auth.role = 'manager'",
+    "updateRule": "@request.auth.role = 'admin' || @request.auth.role = 'manager'",
+    "deleteRule": "@request.auth.role = 'admin'",
+    "fields": [
+      {
+        "name": "name",
+        "type": "text",
+        "required": true,
+        "max": 160
+      },
+      {
+        "name": "name_en",
+        "type": "text",
+        "max": 160
+      },
+      {
+        "name": "country",
+        "type": "text",
+        "max": 80
+      },
+      {
+        "name": "contact",
+        "type": "text",
+        "max": 120
+      },
+      {
+        "name": "email",
+        "type": "email"
+      },
+      {
+        "name": "phone",
+        "type": "text",
+        "max": 40
+      },
+      {
+        "name": "contract_status",
+        "type": "select",
+        "maxSelect": 1,
+        "values": [
+          "signed",
+          "pending",
+          "none"
+        ]
+      },
+      {
+        "name": "crm_notes",
+        "type": "editor"
+      },
+      {
+        "name": "documents",
+        "type": "file",
+        "maxSelect": 20,
+        "maxSize": 15728640
+      },
+      {
+        "name": "created",
+        "type": "autodate",
+        "onCreate": true
+      },
+      {
+        "name": "updated",
+        "type": "autodate",
+        "onCreate": true,
+        "onUpdate": true
+      }
+    ],
+    "indexes": []
+  },
+  {
+    "id": "bookings0000001",
+    "name": "bookings",
+    "type": "base",
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.role = 'admin' || @request.auth.role = 'manager' || @request.auth.role = 'worker'",
+    "updateRule": "@request.auth.role = 'admin' || @request.auth.role = 'manager' || @request.auth.role = 'worker'",
+    "deleteRule": "@request.auth.role = 'admin' || @request.auth.role = 'manager'",
+    "fields": [
+      {
+        "name": "ref",
+        "type": "text",
+        "required": true,
+        "max": 40
+      },
+      {
+        "name": "channel",
+        "type": "select",
+        "required": true,
+        "maxSelect": 1,
+        "values": [
+          "operator",
+          "phone",
+          "walkin",
+          "website"
+        ]
+      },
+      {
+        "name": "operator",
+        "type": "relation",
+        "collectionId": "tourops00000001",
+        "maxSelect": 1,
+        "cascadeDelete": false
+      },
+      {
+        "name": "guest_name",
+        "type": "text",
+        "max": 160
+      },
+      {
+        "name": "party",
+        "type": "number",
+        "min": 1,
+        "onlyInt": true
+      },
+      {
+        "name": "guides",
+        "type": "number",
+        "min": 0,
+        "onlyInt": true
+      },
+      {
+        "name": "check_in",
+        "type": "date"
+      },
+      {
+        "name": "check_out",
+        "type": "date"
+      },
+      {
+        "name": "nights",
+        "type": "number",
+        "min": 0,
+        "onlyInt": true
+      },
+      {
+        "name": "status",
+        "type": "select",
+        "required": true,
+        "maxSelect": 1,
+        "values": [
+          "pending",
+          "confirmed",
+          "checked_in",
+          "checked_out",
+          "cancelled"
+        ]
+      },
+      {
+        "name": "assigned_gers",
+        "type": "relation",
+        "collectionId": "gers0000000001a",
+        "maxSelect": 50,
+        "cascadeDelete": false
+      },
+      {
+        "name": "services",
+        "type": "json",
+        "maxSize": 4000
+      },
+      {
+        "name": "amount",
+        "type": "number",
+        "min": 0
+      },
+      {
+        "name": "pay_status",
+        "type": "select",
+        "maxSelect": 1,
+        "values": [
+          "pending",
+          "advance",
+          "paid"
+        ]
+      },
+      {
+        "name": "source_pdf",
+        "type": "file",
+        "maxSelect": 3,
+        "maxSize": 15728640,
+        "mimeTypes": [
+          "application/pdf"
+        ]
+      },
+      {
+        "name": "created",
+        "type": "autodate",
+        "onCreate": true
+      },
+      {
+        "name": "updated",
+        "type": "autodate",
+        "onCreate": true,
+        "onUpdate": true
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_booking_ref` ON `bookings` (`ref`)"
+    ]
+  },
+  {
+    "id": "invoices0000001",
+    "name": "invoices",
+    "type": "base",
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.role = 'admin' || @request.auth.role = 'manager'",
+    "updateRule": "@request.auth.role = 'admin' || @request.auth.role = 'manager'",
+    "deleteRule": "@request.auth.role = 'admin'",
+    "fields": [
+      {
+        "name": "number",
+        "type": "text",
+        "required": true,
+        "max": 40
+      },
+      {
+        "name": "booking_ref",
+        "type": "text",
+        "max": 40
+      },
+      {
+        "name": "operator",
+        "type": "relation",
+        "collectionId": "tourops00000001",
+        "maxSelect": 1,
+        "cascadeDelete": false
+      },
+      {
+        "name": "line_items",
+        "type": "json",
+        "maxSize": 20000
+      },
+      {
+        "name": "amount",
+        "type": "number",
+        "min": 0
+      },
+      {
+        "name": "vat",
+        "type": "number",
+        "min": 0
+      },
+      {
+        "name": "total",
+        "type": "number",
+        "min": 0
+      },
+      {
+        "name": "status",
+        "type": "select",
+        "maxSelect": 1,
+        "values": [
+          "paid",
+          "advance",
+          "pending"
+        ]
+      },
+      {
+        "name": "issued",
+        "type": "date"
+      },
+      {
+        "name": "pdf",
+        "type": "file",
+        "maxSelect": 1,
+        "maxSize": 15728640,
+        "mimeTypes": [
+          "application/pdf"
+        ]
+      },
+      {
+        "name": "created",
+        "type": "autodate",
+        "onCreate": true
+      },
+      {
+        "name": "updated",
+        "type": "autodate",
+        "onCreate": true,
+        "onUpdate": true
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_invoice_number` ON `invoices` (`number`)"
+    ]
+  },
+  {
+    "id": "kitchentxn00001",
+    "name": "kitchen_txns",
+    "type": "base",
+    "listRule": "@request.auth.id != ''",
+    "viewRule": "@request.auth.id != ''",
+    "createRule": "@request.auth.role = 'admin' || @request.auth.role = 'manager' || @request.auth.role = 'kitchen'",
+    "updateRule": "@request.auth.role = 'admin' || @request.auth.role = 'manager' || @request.auth.role = 'kitchen'",
+    "deleteRule": "@request.auth.role = 'admin' || @request.auth.role = 'manager'",
+    "fields": [
+      {
+        "name": "date",
+        "type": "date",
+        "required": true
+      },
+      {
+        "name": "type",
+        "type": "select",
+        "required": true,
+        "maxSelect": 1,
+        "values": [
+          "income",
+          "expense"
+        ]
+      },
+      {
+        "name": "category",
+        "type": "select",
+        "maxSelect": 1,
+        "values": [
+          "restaurant",
+          "groceries",
+          "wages",
+          "utilities",
+          "other"
+        ]
+      },
+      {
+        "name": "note",
+        "type": "text",
+        "max": 240
+      },
+      {
+        "name": "amount",
+        "type": "number",
+        "required": true,
+        "min": 0
+      },
+      {
+        "name": "created_by",
+        "type": "text",
+        "max": 120
+      },
+      {
+        "name": "created",
+        "type": "autodate",
+        "onCreate": true
+      },
+      {
+        "name": "updated",
+        "type": "autodate",
+        "onCreate": true,
+        "onUpdate": true
+      }
+    ],
+    "indexes": []
+  },
+  {
+    "id": "auditlog0000001",
+    "name": "audit_log",
+    "type": "base",
+    "listRule": "@request.auth.role = 'admin' || @request.auth.role = 'manager'",
+    "viewRule": "@request.auth.role = 'admin' || @request.auth.role = 'manager'",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": null,
+    "deleteRule": null,
+    "fields": [
+      {
+        "name": "user",
+        "type": "text",
+        "required": true,
+        "max": 120
+      },
+      {
+        "name": "role",
+        "type": "text",
+        "max": 40
+      },
+      {
+        "name": "action",
+        "type": "text",
+        "required": true,
+        "max": 60
+      },
+      {
+        "name": "entity",
+        "type": "text",
+        "max": 160
+      },
+      {
+        "name": "detail",
+        "type": "text",
+        "max": 400
+      },
+      {
+        "name": "ts",
+        "type": "autodate",
+        "onCreate": true
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX `idx_audit_ts` ON `audit_log` (`ts`)"
+    ]
+  },
+  {
+    "id": "sitecontent0001",
+    "name": "site_content",
+    "type": "base",
+    "listRule": "",
+    "viewRule": "",
+    "createRule": "@request.auth.role = 'admin'",
+    "updateRule": "@request.auth.role = 'admin'",
+    "deleteRule": "@request.auth.role = 'admin'",
+    "fields": [
+      {
+        "name": "key",
+        "type": "text",
+        "required": true,
+        "max": 80
+      },
+      {
+        "name": "value_en",
+        "type": "editor"
+      },
+      {
+        "name": "value_mn",
+        "type": "editor"
+      },
+      {
+        "name": "images",
+        "type": "file",
+        "maxSelect": 20,
+        "maxSize": 10485760,
+        "mimeTypes": [
+          "image/jpeg",
+          "image/png",
+          "image/webp"
+        ]
+      },
+      {
+        "name": "sort",
+        "type": "number"
+      },
+      {
+        "name": "published",
+        "type": "bool"
+      },
+      {
+        "name": "updated",
+        "type": "autodate",
+        "onCreate": true,
+        "onUpdate": true
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_content_key` ON `site_content` (`key`)"
+    ]
+  }
+];
+
+  // create/update the business collections (deleteMissing=false leaves the
+  // built-in system collections untouched)
+  app.importCollections(collections, false);
+
+  // users: the app-specific identity fields + lock listing to admins
+  const users = app.findCollectionByNameOrId("users");
+  if (!users.fields.getByName("full_name")) {
+    users.fields.add(new TextField({ name: "full_name", max: 120 }));
+  }
+  if (!users.fields.getByName("role")) {
+    users.fields.add(new SelectField({
+      name: "role", required: true, maxSelect: 1,
+      values: ["admin", "manager", "kitchen", "worker"],
+    }));
+  }
+  users.listRule = "@request.auth.role = 'admin'";
+  app.save(users);
+}, (app) => {
+  // down: drop the business collections (reverse dependency order)
+  const drop = ["site_content","audit_log","kitchen_txns","invoices","bookings","tour_operators","gers"];
+  for (const name of drop) {
+    try { app.delete(app.findCollectionByNameOrId(name)); } catch (e) { /* already gone */ }
+  }
+  try {
+    const users = app.findCollectionByNameOrId("users");
+    users.listRule = "id = @request.auth.id";
+    app.save(users);
+  } catch (e) { /* ignore */ }
+});
