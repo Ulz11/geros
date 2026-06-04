@@ -67,7 +67,8 @@ sed "s/YOUR_DOMAIN/$DOMAIN/" "$SCRIPT_DIR/Caddyfile" > /etc/caddy/Caddyfile
 systemctl reload caddy
 
 echo "==> nightly backup"
-cp "$SCRIPT_DIR/backup.sh" "$APP_DIR/backup.sh" && chmod +x "$APP_DIR/backup.sh"
+cp "$SCRIPT_DIR/backup.sh"  "$APP_DIR/backup.sh"  && chmod +x "$APP_DIR/backup.sh"
+cp "$SCRIPT_DIR/restore.sh" "$APP_DIR/restore.sh" && chmod +x "$APP_DIR/restore.sh"
 ( crontab -l 2>/dev/null | grep -v geros/backup.sh || true ; echo "20 3 * * * $APP_DIR/backup.sh >/var/log/geros-backup.log 2>&1" ) | crontab -
 
 echo

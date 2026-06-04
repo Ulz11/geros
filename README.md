@@ -97,7 +97,8 @@ Camp/
 │   ├─ install.sh             ← one-shot VPS setup: PocketBase + Caddy TLS + systemd + cron
 │   ├─ geros.service          ← systemd unit
 │   ├─ Caddyfile              ← HTTPS reverse proxy (SSE-safe for realtime)
-│   └─ backup.sh              ← nightly consistent SQLite snapshot + uploads, 14-day rotation
+│   ├─ backup.sh              ← nightly consistent SQLite snapshot + uploads, 14-day rotation
+│   └─ restore.sh             ← bring a backup back (drilled in CI, see docs/OPS.md)
 └─ docs/
     ├─ DATA_MODEL.md          ← authoritative schema + role/permission matrix
     └─ PLAN.md                ← the 3-day build plan
@@ -248,6 +249,11 @@ script with Caddy TLS + systemd + nightly consistent SQLite backups.
   red = guests in the ger, physical-status dot per ger, booking ref + tooltip on each
   span, today highlighted. Backed by `GET /api/camp/availability` (6 new tests, 54
   total). Staff can finally answer "can we take 6 people Aug 14-17?" at a glance.
+- **v1.6 (done — ops):** restore drill. A backup that has never been restored is not a
+  backup: `deploy/restore.sh` restores a nightly archive (with a safety snapshot of the
+  current data first), and `backend/test/restore.test.mjs` rehearses the full
+  seed → backup → mutate → restore → verify round-trip against a real PocketBase **on
+  every CI run** (55 tests total). Plus: the app and public site now ship a favicon.
 - **Not yet done:** Generic
   operator-PDF auto-parsing (the standalone generator handles the known format).
   Deliberately out of scope: online card payments,

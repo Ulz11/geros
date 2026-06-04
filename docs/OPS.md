@@ -38,3 +38,19 @@ in sync if the jobs are renamed.
   `pocketbase` JS SDK in `app/package.json` and re-run the test suite locally first.
 - Action majors were chosen for the Node 24 runner runtime (June 2026 cutoff);
   `upload-artifact` needed v7 while checkout/setup-node were fine at v5.
+
+## Restore (rehearsed, not theoretical)
+
+`deploy/restore.sh` restores a nightly `backup.sh` archive:
+
+```sh
+bash /opt/geros/restore.sh /opt/geros/backups/geros-YYYYMMDD-HHMM.tar.gz
+```
+
+It stops the service, keeps the current `pb_data` aside as
+`pb_data.before-restore-<stamp>` (a restore can never destroy data), unpacks the
+backup's database + uploads, fixes ownership, and starts the service again.
+
+The exact mechanics are drilled automatically in CI by
+`backend/test/restore.test.mjs`: seed -> backup -> mutate -> restore -> verify
+the snapshot state came back. If that test is green, the restore path works.

@@ -40,13 +40,18 @@ async function waitForHealth(baseUrl, ms = 20000) {
   throw new Error("PocketBase did not become healthy in time");
 }
 
-export async function startInstance(port = 8097, env = {}) {
+// opts.dir   - reuse an existing data dir (skips superuser + user bootstrap)
+// opts.keepDir - stop() kills the process but leaves the data dir on disk
+export async function startInstance(port = 8097, env = {}, opts = {}) {
   if (!existsSync(PB)) throw new Error(`pocketbase binary not found at ${PB}`);
-  const dir = mkdtempSync(join(tmpdir(), "geros-test-"));
+  const fresh = !opts.dir;
+  const dir = opts.dir || mkdtempSync(join(tmpdir(), "geros-test-"));
   const baseUrl = `http://127.0.0.1:${port}`;
 
   // superuser must exist before serve so we can authenticate for the schema import
-  execFileSync(PB, ["superuser", "upsert", SU.email, SU.pass, "--dir", dir], { stdio: "ignore" });
+  if (fresh) {
+    execFileSync(PB, ["superuser", "upsert", SU.email, SU.pass, "--dir", dir], { stdio: "ignore" });
+  }
 
   // --migrationsDir provisions the DB on first boot exactly like production:
   // the suite therefore verifies the real self-provisioning path, not a
@@ -63,7 +68,8 @@ export async function startInstance(port = 8097, env = {}) {
     proc,
     dir,
     tokens: {}, // role -> token cache
-    async stop() {
+    // kill the server but keep the data dir (for restore drills / restarts)
+    async stopProcess() {
       try {
         if (process.platform === "win32") {
           execFileSync("taskkill", ["/F", "/T", "/PID", String(proc.pid)], { stdio: "ignore" });
@@ -71,13 +77,18 @@ export async function startInstance(port = 8097, env = {}) {
           proc.kill("SIGKILL");
         }
       } catch { /* already gone */ }
-      await sleep(200);
-      try { rmSync(dir, { recursive: true, force: true }); } catch { /* locked, leave it */ }
+      await sleep(400); // let Windows release file locks
+    },
+    async stop() {
+      await inst.stopProcess();
+      if (!opts.keepDir) {
+        try { rmSync(dir, { recursive: true, force: true }); } catch { /* locked, leave it */ }
+      }
     },
   };
 
   await waitForHealth(baseUrl);
-  await bootstrap(inst);
+  if (fresh) await bootstrap(inst);
   return inst;
 }
 
