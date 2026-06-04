@@ -51,7 +51,7 @@ jobs:
           npm run build
 
       - name: Upload built admin bundle
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: admin-bundle
           path: backend/pb_public/admin
