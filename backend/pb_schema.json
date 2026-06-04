@@ -447,7 +447,7 @@
     "type": "base",
     "listRule": "@request.auth.role = 'admin' || @request.auth.role = 'manager'",
     "viewRule": "@request.auth.role = 'admin' || @request.auth.role = 'manager'",
-    "createRule": "@request.auth.id != ''",
+    "createRule": null,
     "updateRule": null,
     "deleteRule": null,
     "fields": [

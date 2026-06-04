@@ -62,69 +62,78 @@ routerAdd("POST", "/api/camp/assign/{bookingId}", (e) => {
   }
 
   const { recommendFor } = require(`${__hooks}/utils.js`);
-  const booking = e.app.findRecordById("bookings", e.request.pathValue("bookingId"));
-  if (booking.get("status") !== "pending") {
-    return e.json(400, { error: "booking is not pending" });
-  }
+  const bookingId = e.request.pathValue("bookingId");
 
-  const rec = recommendFor(e.app, booking);
-  if (!rec.gers.length) return e.json(400, { error: "no fit", reason: rec.reason });
+  // v1.4: every read + write happens inside ONE transaction. Concurrent
+  // overlapping assigns serialize, so the availability check can't go stale
+  // mid-flight (the read-check-write race), and any failure rolls the whole
+  // action back instead of half-applying it.
+  let out = null;        // { code, body }
+  let auditInfo = null;  // written AFTER commit - audit must never roll back business writes
+  e.app.runInTransaction((tx) => {
+    const booking = tx.findRecordById("bookings", bookingId);
+    if (booking.get("status") !== "pending") {
+      out = { code: 400, body: { error: "booking is not pending" } };
+      return;
+    }
+    const rec = recommendFor(tx, booking);
+    if (!rec.gers.length) {
+      out = { code: 400, body: { error: "no fit", reason: rec.reason } };
+      return;
+    }
+    const ref = booking.get("ref");
 
-  const ref = booking.get("ref");
+    // v1.3: assign RESERVES. The gers stay physically available until check-in -
+    // a September booking confirmed in June must not paint the map red all summer.
+    booking.set("status", "confirmed");
+    booking.set("assigned_gers", rec.gers.map((g) => g.id));
+    tx.save(booking);
 
-  // v1.3: assign RESERVES. The gers stay physically available until check-in -
-  // a September booking confirmed in June must not paint the map red all summer.
-  booking.set("status", "confirmed");
-  booking.set("assigned_gers", rec.gers.map((g) => g.id));
-  e.app.save(booking);
+    // sequential invoice number: MAX existing + 1. Gap-proof by construction
+    // (deleting an old invoice can't cause a collision) and needs no retry -
+    // important inside a transaction, where a failed statement poisons the tx.
+    const year = new Date().getFullYear();
+    const existing = tx.findRecordsByFilter("invoices", "number ~ {:p}", "", 500, 0, { p: "INV-" + year + "-%" });
+    let max = 0;
+    existing.forEach((i) => {
+      const m = /-(\d+)$/.exec(i.get("number") || "");
+      if (m) { const n = parseInt(m[1], 10); if (n > max) max = n; }
+    });
+    const number = "INV-" + year + "-" + String(max + 1).padStart(3, "0");
 
-  // auto-create the invoice with a sequential number (count this year's, +1;
-  // unique index on number + retry below makes collisions harmless)
-  const year = new Date().getFullYear();
-  const existing = e.app.findRecordsByFilter("invoices", "number ~ 'INV-" + year + "-%'", "", 500, 0);
-  let seq = existing.length + 1;
-  let number = "INV-" + year + "-" + String(seq).padStart(3, "0");
+    const inv = new Record(tx.findCollectionByNameOrId("invoices"));
+    inv.set("number", number);
+    inv.set("booking_ref", ref);
+    inv.set("operator", booking.get("operator") || "");
+    inv.set("amount", booking.getFloat("amount"));
+    inv.set("total", booking.getFloat("amount"));
+    inv.set("status", booking.get("pay_status") || "pending");
+    inv.set("issued", new Date().toISOString().slice(0, 10) + " 00:00:00.000Z");
+    tx.save(inv);
 
-  const invCol = e.app.findCollectionByNameOrId("invoices");
-  const inv = new Record(invCol);
-  let saved = false;
-  for (let attempt = 0; attempt < 3 && !saved; attempt++) {
+    out = { code: 200, body: { ok: true, gers: rec.gers.map((g) => g.code), waste: rec.waste, invoice: number } };
+    auditInfo = {
+      entity: ref + " -> " + rec.gers.map((g) => g.code).join("+"),
+      detail: "auto-invoice " + number + " - " + booking.getFloat("amount"),
+    };
+  });
+
+  // one clean, attributable audit entry for the whole committed action
+  if (auditInfo) {
     try {
-      inv.set("number", number);
-      inv.set("booking_ref", ref);
-      inv.set("operator", booking.get("operator") || "");
-      inv.set("amount", booking.getFloat("amount"));
-      inv.set("total", booking.getFloat("amount"));
-      inv.set("status", booking.get("pay_status") || "pending");
-      inv.set("issued", new Date().toISOString().slice(0, 10) + " 00:00:00.000Z");
-      e.app.save(inv);
-      saved = true;
+      const log = new Record(e.app.findCollectionByNameOrId("audit_log"));
+      log.set("user", String(e.auth.get("full_name") || e.auth.get("email")));
+      log.set("role", String(role));
+      log.set("action", "assigned");
+      log.set("entity", auditInfo.entity);
+      log.set("detail", auditInfo.detail);
+      e.app.save(log);
     } catch (err) {
-      // unique collision - bump and retry
-      seq += 1;
-      number = "INV-" + year + "-" + String(seq).padStart(3, "0");
+      console.log("[audit] assign skipped:", err);
     }
   }
 
-  // one clean, attributable audit entry for the whole action
-  try {
-    const log = new Record(e.app.findCollectionByNameOrId("audit_log"));
-    log.set("user", String(e.auth.get("full_name") || e.auth.get("email")));
-    log.set("role", String(role));
-    log.set("action", "assigned");
-    log.set("entity", ref + " -> " + rec.gers.map((g) => g.code).join("+"));
-    log.set("detail", "auto-invoice " + (saved ? number : "FAILED") + " - " + booking.getFloat("amount"));
-    e.app.save(log);
-  } catch (err) {
-    console.log("[audit] assign skipped:", err);
-  }
-
-  return e.json(200, {
-    ok: true,
-    gers: rec.gers.map((g) => g.code),
-    waste: rec.waste,
-    invoice: saved ? number : null,
-  });
+  return e.json(out.code, out.body);
 });
 
 /* ----------------------------------------------------------------
@@ -139,46 +148,67 @@ routerAdd("POST", "/api/camp/checkin/{bookingId}", (e) => {
     return e.json(403, { error: "not allowed" });
   }
 
-  const booking = e.app.findRecordById("bookings", e.request.pathValue("bookingId"));
-  if (booking.get("status") !== "confirmed") {
-    return e.json(400, { error: "booking is not confirmed" });
-  }
-  const ref = booking.get("ref");
-  const gerIds = booking.get("assigned_gers") || [];
-  if (!gerIds.length) return e.json(400, { error: "no gers assigned" });
-
-  // conflict check BEFORE any write: someone physically in one of our gers?
-  const gers = [];
-  for (let i = 0; i < gerIds.length; i++) {
-    const ger = e.app.findRecordById("gers", gerIds[i]);
-    const holder = ger.get("current_booking");
-    if (ger.get("status") === "occupied" && holder && holder !== ref) {
-      return e.json(409, { error: "ger occupied", ger: ger.get("code"), by: holder });
+  // v1.4: conflict check + occupation are one transaction - the check can't go
+  // stale between reading the gers and writing them, and a mid-flight failure
+  // can't leave half the group's gers occupied.
+  let out = null;
+  let auditInfo = null;
+  e.app.runInTransaction((tx) => {
+    const booking = tx.findRecordById("bookings", e.request.pathValue("bookingId"));
+    if (booking.get("status") !== "confirmed") {
+      out = { code: 400, body: { error: "booking is not confirmed" } };
+      return;
     }
-    gers.push(ger);
-  }
+    const ref = booking.get("ref");
+    const gerIds = booking.get("assigned_gers") || [];
+    if (!gerIds.length) {
+      out = { code: 400, body: { error: "no gers assigned" } };
+      return;
+    }
 
-  gers.forEach((ger) => {
-    ger.set("status", "occupied");
-    ger.set("current_booking", ref);
-    e.app.save(ger);
+    // conflict check BEFORE any write: someone physically in one of our gers?
+    const gers = [];
+    for (let i = 0; i < gerIds.length; i++) {
+      const ger = tx.findRecordById("gers", gerIds[i]);
+      const holder = ger.get("current_booking");
+      if (ger.get("status") === "occupied" && holder && holder !== ref) {
+        out = { code: 409, body: { error: "ger occupied", ger: ger.get("code"), by: holder } };
+        return;
+      }
+      gers.push(ger);
+    }
+
+    gers.forEach((ger) => {
+      ger.set("status", "occupied");
+      ger.set("current_booking", ref);
+      tx.save(ger);
+    });
+    booking.set("status", "checked_in");
+    tx.save(booking);
+
+    const codes = gers.map((g) => g.get("code"));
+    out = { code: 200, body: { ok: true, gers: codes } };
+    auditInfo = {
+      entity: ref + " -> " + codes.join("+"),
+      detail: "guests arrived, " + gers.length + " ger(s) occupied",
+    };
   });
-  booking.set("status", "checked_in");
-  e.app.save(booking);
 
-  try {
-    const log = new Record(e.app.findCollectionByNameOrId("audit_log"));
-    log.set("user", String(e.auth.get("full_name") || e.auth.get("email")));
-    log.set("role", String(role));
-    log.set("action", "checked_in");
-    log.set("entity", ref + " -> " + gers.map((g) => g.get("code")).join("+"));
-    log.set("detail", "guests arrived, " + gers.length + " ger(s) occupied");
-    e.app.save(log);
-  } catch (err) {
-    console.log("[audit] checkin skipped:", err);
+  if (auditInfo) {
+    try {
+      const log = new Record(e.app.findCollectionByNameOrId("audit_log"));
+      log.set("user", String(e.auth.get("full_name") || e.auth.get("email")));
+      log.set("role", String(role));
+      log.set("action", "checked_in");
+      log.set("entity", auditInfo.entity);
+      log.set("detail", auditInfo.detail);
+      e.app.save(log);
+    } catch (err) {
+      console.log("[audit] checkin skipped:", err);
+    }
   }
 
-  return e.json(200, { ok: true, gers: gers.map((g) => g.get("code")) });
+  return e.json(out.code, out.body);
 });
 
 /* ----------------------------------------------------------------
@@ -194,40 +224,55 @@ routerAdd("POST", "/api/camp/checkout/{bookingId}", (e) => {
     return e.json(403, { error: "not allowed" });
   }
 
-  const booking = e.app.findRecordById("bookings", e.request.pathValue("bookingId"));
-  const status = booking.get("status");
-  if (status !== "checked_in" && status !== "confirmed") {
-    return e.json(400, { error: "booking is not checked in or confirmed" });
-  }
-  const ref = booking.get("ref");
-
-  const freed = [];
-  (booking.get("assigned_gers") || []).forEach((gid) => {
-    let ger;
-    try { ger = e.app.findRecordById("gers", gid); } catch (err) { return; } // ger deleted meanwhile
-    if (ger.get("current_booking") === ref) {
-      ger.set("status", "cleaning");
-      ger.set("current_booking", "");
-      e.app.save(ger);
-      freed.push(ger.get("code"));
+  // v1.4: free-the-gers + flip-the-booking is one transaction - a dropped
+  // connection can't leave half the group's gers stuck "occupied".
+  let out = null;
+  let auditInfo = null;
+  e.app.runInTransaction((tx) => {
+    const booking = tx.findRecordById("bookings", e.request.pathValue("bookingId"));
+    const status = booking.get("status");
+    if (status !== "checked_in" && status !== "confirmed") {
+      out = { code: 400, body: { error: "booking is not checked in or confirmed" } };
+      return;
     }
-  });
-  booking.set("status", "checked_out");
-  e.app.save(booking);
+    const ref = booking.get("ref");
 
-  try {
-    const log = new Record(e.app.findCollectionByNameOrId("audit_log"));
-    log.set("user", String(e.auth.get("full_name") || e.auth.get("email")));
-    log.set("role", String(role));
-    log.set("action", "checked_out");
-    log.set("entity", ref + (freed.length ? " -> " + freed.join("+") : ""));
-    log.set("detail", freed.length ? freed.length + " ger(s) to cleaning" : "no gers were held");
-    e.app.save(log);
-  } catch (err) {
-    console.log("[audit] checkout skipped:", err);
+    const freed = [];
+    (booking.get("assigned_gers") || []).forEach((gid) => {
+      let ger;
+      try { ger = tx.findRecordById("gers", gid); } catch (err) { return; } // ger deleted meanwhile
+      if (ger.get("current_booking") === ref) {
+        ger.set("status", "cleaning");
+        ger.set("current_booking", "");
+        tx.save(ger);
+        freed.push(ger.get("code"));
+      }
+    });
+    booking.set("status", "checked_out");
+    tx.save(booking);
+
+    out = { code: 200, body: { ok: true, freed: freed } };
+    auditInfo = {
+      entity: ref + (freed.length ? " -> " + freed.join("+") : ""),
+      detail: freed.length ? freed.length + " ger(s) to cleaning" : "no gers were held",
+    };
+  });
+
+  if (auditInfo) {
+    try {
+      const log = new Record(e.app.findCollectionByNameOrId("audit_log"));
+      log.set("user", String(e.auth.get("full_name") || e.auth.get("email")));
+      log.set("role", String(role));
+      log.set("action", "checked_out");
+      log.set("entity", auditInfo.entity);
+      log.set("detail", auditInfo.detail);
+      e.app.save(log);
+    } catch (err) {
+      console.log("[audit] checkout skipped:", err);
+    }
   }
 
-  return e.json(200, { ok: true, freed: freed });
+  return e.json(out.code, out.body);
 });
 
 /* ----------------------------------------------------------------

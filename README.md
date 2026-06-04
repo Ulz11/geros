@@ -230,6 +230,17 @@ script with Caddy TLS + systemd + nightly consistent SQLite backups.
   (`/api/camp/checkout`) — each one transactional server call replacing the old
   client-side multi-writes that could be half-applied on a dropped connection.
   13 new integration tests (44 total); the whole arc verified in a real browser.
+- **v1.4 (done — core audit + hardening):** the core was audited and upgraded.
+  Found + fixed: (1) the audit log was **forgeable** — any authed user could POST
+  fake rows with arbitrary user/role text; the API surface is now locked
+  (`1717200300_lock_audit.js`), only the hooks write the trail. (2) assign /
+  check-in / check-out ran as sequential writes — now each runs inside **one DB
+  transaction**: concurrent overlapping assigns serialize (a 6-way parallel race
+  test proves exactly one winner), and a dropped connection can't half-apply a
+  group check-in. (3) invoice numbering moved from count+retry to **max+1** —
+  gap-proof by construction, no retry needed inside a transaction. 4 new tests
+  (48 total). Verified clean: unique indexes on ref/number/code/key were already
+  in place.
 - **Not yet done:** Generic
   operator-PDF auto-parsing (the standalone generator handles the known format).
   Deliberately out of scope: online card payments,

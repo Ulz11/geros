@@ -151,7 +151,11 @@ migration files; the init migration stays frozen at the v1 snapshot.
 now**. Allocation excludes gers whose reservations overlap the requested dates and only
 checks physical status for bookings starting today. Assign reserves; check-in occupies;
 check-out frees to cleaning. The three transitions are single server calls
-(`/api/camp/assign|checkin|checkout`) so a dropped connection can't half-apply them.
+(`/api/camp/assign|checkin|checkout`) and each runs inside **one DB transaction**
+(v1.4): concurrent overlapping assigns serialize — the availability check cannot go
+stale mid-flight — and a failure rolls the whole action back. Invoice numbers are
+max+1 within the year (gap-proof). The audit log is written exclusively by the hooks;
+its API createRule is locked (`1717200300_lock_audit.js`) so rows cannot be forged.
 
 Enforced in **two places**: API rules on each collection (server-side, the real
 boundary) and the frontend nav (UX). Never trust the frontend alone — the rules in
