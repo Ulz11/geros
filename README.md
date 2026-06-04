@@ -201,8 +201,13 @@ script with Caddy TLS + systemd + nightly consistent SQLite backups.
   toolchain (vite 5 / esbuild) carries a moderate advisory that affects only the Vite
   **dev server**, never the static bundle PocketBase ships — not a production exposure;
   the fix is a major vite bump, deferred.
-- **Not yet done:** One-click
-  end-of-season PDF (CSV exists; print-styled report page is the cheap v1.1). Generic
+- **v1.1 (done, verified end-to-end):** one-click end-of-season report — Reports now has
+  a season (year) selector and a 🖨 print button that opens a bilingual MN/EN print-styled
+  report (browser print = the PDF): financial summary, monthly revenue/kitchen/expense
+  breakdown, booking stats by channel and status, top operators by invoice revenue, and
+  invoice status totals. Reuses the invoice paper styles; verified in a real browser
+  against a seeded 4-month season, including print-media rendering.
+- **Not yet done:** Generic
   operator-PDF auto-parsing (the standalone generator handles the known format). Payroll
   beyond wage expense lines. Deliberately out of scope: online card payments,
   multi-camp tenancy.

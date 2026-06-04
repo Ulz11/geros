@@ -42,6 +42,7 @@ const I18N = {
     avgBooking: "Avg booking value", topOperator: "Top operator", kitchenNet: "Kitchen net",
     occupancyNow: "Occupancy now", totalBookings: "Total bookings", margin: "margin",
     newInvoice: "New invoice", number: "Number", issued: "Issued",
+    printReport: "Print report", season: "Season",
   },
   mn: {
     tagline: "Кэмп удирдлага, хялбархан. Нэвтэрч орно уу.",
@@ -83,6 +84,7 @@ const I18N = {
     avgBooking: "Дундаж захиалгын дүн", topOperator: "Шилдэг оператор", kitchenNet: "Гал тогооны цэвэр",
     occupancyNow: "Одоогийн дүүргэлт", totalBookings: "Нийт захиалга", margin: "ашиг",
     newInvoice: "Шинэ нэхэмжлэх", number: "Дугаар", issued: "Олгосон",
+    printReport: "Тайлан хэвлэх", season: "Улирал",
   },
 };
 
