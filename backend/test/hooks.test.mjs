@@ -73,7 +73,7 @@ describe("smart allocation  GET /api/camp/recommend/{id}", () => {
 
 /* ---------------------------------------------------------------- */
 describe("assign  POST /api/camp/assign/{id}", () => {
-  test("occupies gers, confirms booking, creates a numbered invoice, audits once", async () => {
+  test("reserves gers, confirms booking, creates a numbered invoice, audits once", async () => {
     const g = await seedGer(inst, { code: "G1", capacity: 2 });
     const b = await seedBooking(inst, { ref: "BK-1", party: 2 });
     const token = await authAs(inst, "manager");
@@ -84,10 +84,10 @@ describe("assign  POST /api/camp/assign/{id}", () => {
     assert.deepEqual(r.data.gers, ["G1"]);
     assert.match(r.data.invoice, /^INV-\d{4}-001$/);
 
-    // ger now occupied + tagged with the booking ref
+    // v1.3 semantics: assign RESERVES - the ger only turns occupied at check-in
     const ger = (await api(inst, "GET", `/api/collections/gers/records/${g.id}`, { token })).data;
-    assert.equal(ger.status, "occupied");
-    assert.equal(ger.current_booking, "BK-1");
+    assert.equal(ger.status, "available");
+    assert.equal(ger.current_booking, "");
     // booking confirmed + linked
     const bk = (await api(inst, "GET", `/api/collections/bookings/records/${b.id}`, { token })).data;
     assert.equal(bk.status, "confirmed");

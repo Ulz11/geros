@@ -148,12 +148,18 @@ assign + auto-invoice, the audit trail, public-booking validation + rate limitin
 role matrix. CI (`.github/workflows/ci.yml`) runs this plus the production frontend build on
 every push.
 
-Three endpoints the hooks add:
-- `GET  /api/camp/recommend/{bookingId}` — ranked best-fit available gers
-- `POST /api/camp/assign/{bookingId}` — occupies gers, confirms booking, creates the
-  numbered invoice, writes one attributable audit row. One call, no client-side juggling.
+Five endpoints the hooks add (all single-call, server-side, audited):
+- `GET  /api/camp/recommend/{bookingId}` — ranked best-fit gers, **date-aware**: a ger
+  reserved by a confirmed booking with overlapping dates is excluded; a ger someone
+  sleeps in tonight is still offered for September.
+- `POST /api/camp/assign/{bookingId}` — **reserves** the gers (assigned_gers), confirms
+  the booking, creates the numbered invoice. The map stays green until the guests arrive.
+- `POST /api/camp/checkin/{bookingId}` — guests arrived: occupies the reserved gers
+  (409 if someone else is physically in one), booking → checked_in.
+- `POST /api/camp/checkout/{bookingId}` — frees exactly the gers this booking holds to
+  cleaning, booking → checked_out.
 - `POST /api/camp/public-booking` — the website form's target. Server-side validation,
-  honeypot, lands as a pending booking with channel `website`.
+  honeypot, per-IP rate limit, lands as a pending booking with channel `website`.
 
 ---
 
@@ -215,6 +221,15 @@ script with Caddy TLS + systemd + nightly consistent SQLite backups.
   row + monthly column); kitchen net stays kitchen-only. Both collections audited.
   6 new integration tests (31 total). Ships as its own migration —
   `1717200200_payroll.js` — existing camps just restart PocketBase.
+- **v1.3 (done, tested + verified end-to-end):** date-aware allocation + server-side
+  lifecycle. Allocation now considers booking date overlap, not just the map's physical
+  colors — confirming a September booking in June no longer paints gers red all summer,
+  two overlapping bookings can never hold the same ger, and tonight's occupied ger is
+  still sellable for next month. Assign reserves; gers turn occupied at **check-in**
+  (`/api/camp/checkin`, 409 on physical conflict) and free to cleaning at **check-out**
+  (`/api/camp/checkout`) — each one transactional server call replacing the old
+  client-side multi-writes that could be half-applied on a dropped connection.
+  13 new integration tests (44 total); the whole arc verified in a real browser.
 - **Not yet done:** Generic
   operator-PDF auto-parsing (the standalone generator handles the known format).
   Deliberately out of scope: online card payments,

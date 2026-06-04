@@ -48,6 +48,7 @@ const I18N = {
     bonus: "Bonus", deduction: "Deduction", paidOn: "Paid on", pay: "Pay", unpaid: "Unpaid",
     wageBill: "Monthly wage bill", paidThisMonth: "Paid this month", month: "Month",
     showInactive: "Show inactive",
+    gerOccupied: "A ger is still occupied by another booking.",
   },
   mn: {
     tagline: "Кэмп удирдлага, хялбархан. Нэвтэрч орно уу.",
@@ -95,6 +96,7 @@ const I18N = {
     bonus: "Урамшуулал", deduction: "Суутгал", paidOn: "Олгосон огноо", pay: "Олгох", unpaid: "Олгоогүй",
     wageBill: "Сарын цалингийн сан", paidThisMonth: "Энэ сард олгосон", month: "Сар",
     showInactive: "Идэвхгүйг харуулах",
+    gerOccupied: "Гэр өөр захиалгад дүүрэн байна.",
   },
 };
 

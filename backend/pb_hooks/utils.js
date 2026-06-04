@@ -37,11 +37,36 @@ function writeAudit(e, action) {
 // Best-fit allocation for a booking record.
 // Strategy: tightest single ger first; else largest-first + nearest neighbours
 // so a group stays clustered on the map.
+//
+// v1.3 - DATE-AWARE: a ger is off-limits if a confirmed/checked_in booking with
+// an OVERLAPPING date range has reserved it. Physical status only matters for
+// bookings that start today or have no dates - a ger someone sleeps in tonight
+// is perfectly bookable for September.
 function recommendFor(app, booking) {
   const party = booking.getInt("party");
+  const ci = String(booking.get("check_in") || "");
+  const co = String(booking.get("check_out") || "");
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const startsNow = !ci || ci.slice(0, 10) <= todayStr;
 
-  const gers = app.findRecordsByFilter("gers", "status = 'available'", "", 200, 0);
-  const avail = gers.map((g) => ({
+  // gers reserved by date-overlapping active bookings ([ci, co) half-open:
+  // back-to-back stays allowed). Undated requests treat every active
+  // reservation as busy - the safe reading when we know nothing about dates.
+  const busy = {};
+  const overlapFilter = ci && co
+    ? "(status = 'confirmed' || status = 'checked_in') && check_in < {:co} && check_out > {:ci} && id != {:id}"
+    : "(status = 'confirmed' || status = 'checked_in') && id != {:id}";
+  const holders = app.findRecordsByFilter("bookings", overlapFilter, "", 500, 0, { ci: ci, co: co, id: booking.id });
+  holders.forEach((b) => {
+    const ids = b.get("assigned_gers") || [];
+    for (let i = 0; i < ids.length; i++) busy[ids[i]] = true;
+  });
+
+  // future bookings ignore tonight's physical state; today's need a clean ger
+  const gers = startsNow
+    ? app.findRecordsByFilter("gers", "status = 'available'", "", 200, 0)
+    : app.findRecordsByFilter("gers", "id != ''", "", 200, 0);
+  const avail = gers.filter((g) => !busy[g.id]).map((g) => ({
     id: g.id, code: g.get("code"), capacity: g.getInt("capacity"),
     x: g.getFloat("x"), y: g.getFloat("y"),
   }));

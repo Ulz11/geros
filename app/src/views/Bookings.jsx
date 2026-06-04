@@ -32,23 +32,31 @@ export default function Bookings({ role, go }) {
   useEffect(() => { load(); }, [load]);
 
   async function setBookingStatus(b, status) {
+    // check-in/check-out are SERVER-SIDE endpoints (one call that moves the
+    // gers + booking + audit together) - no client-side multi-writes that can
+    // be half-applied if the connection drops.
     try {
-      await pb.collection("bookings").update(b.id, { status });
-      // freeing gers on checkout/cancel: set them to cleaning
-      if ((status === "checked_out" || status === "cancelled") && b.assigned_gers?.length) {
-        await Promise.all(
-          b.assigned_gers.map((gid) =>
-            pb.collection("gers").update(gid, { status: "cleaning", current_booking: "" }).catch(() => {})
-          )
-        );
-        toast(t("freedGers"));
+      if (status === "checked_in") {
+        await pb.send(`/api/camp/checkin/${b.id}`, { method: "POST" });
+        toast(`${b.ref} → ${t("checked_in")}`);
+      } else if (status === "checked_out") {
+        const r = await pb.send(`/api/camp/checkout/${b.id}`, { method: "POST" });
+        toast(r.freed?.length ? t("freedGers") : `${b.ref} → ${t("checked_out")}`);
+      } else if (status === "cancelled") {
+        // a checked-in booking frees its gers first, then cancels
+        if (b.status === "checked_in") {
+          await pb.send(`/api/camp/checkout/${b.id}`, { method: "POST" }).catch(() => {});
+        }
+        await pb.collection("bookings").update(b.id, { status });
+        toast(`${b.ref} → ${t(status)}`);
       } else {
+        await pb.collection("bookings").update(b.id, { status });
         toast(`${b.ref} → ${t(status)}`);
       }
       setOpenRow(null);
       load();
-    } catch (_) {
-      toast(t("connErr"));
+    } catch (ex) {
+      toast(ex?.status === 409 ? t("gerOccupied") : t("connErr"));
     }
   }
 

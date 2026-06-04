@@ -145,6 +145,14 @@ migration files; the init migration stays frozen at the v1 snapshot.
 | Activity log | ✓ | ✓ | — | — |
 | Website + users | ✓ | — | — | — |
 
+### Lifecycle semantics (v1.3)
+
+`assigned_gers` is the **reservation** (date-scoped); `gers.status` is the **physical
+now**. Allocation excludes gers whose reservations overlap the requested dates and only
+checks physical status for bookings starting today. Assign reserves; check-in occupies;
+check-out frees to cleaning. The three transitions are single server calls
+(`/api/camp/assign|checkin|checkout`) so a dropped connection can't half-apply them.
+
 Enforced in **two places**: API rules on each collection (server-side, the real
 boundary) and the frontend nav (UX). Never trust the frontend alone — the rules in
 `pb_schema.json` are what actually stop a worker from reading finance.

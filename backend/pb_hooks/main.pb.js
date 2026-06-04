@@ -72,15 +72,8 @@ routerAdd("POST", "/api/camp/assign/{bookingId}", (e) => {
 
   const ref = booking.get("ref");
 
-  // occupy the gers
-  rec.gers.forEach((g) => {
-    const ger = e.app.findRecordById("gers", g.id);
-    ger.set("status", "occupied");
-    ger.set("current_booking", ref);
-    e.app.save(ger);
-  });
-
-  // confirm the booking
+  // v1.3: assign RESERVES. The gers stay physically available until check-in -
+  // a September booking confirmed in June must not paint the map red all summer.
   booking.set("status", "confirmed");
   booking.set("assigned_gers", rec.gers.map((g) => g.id));
   e.app.save(booking);
@@ -132,6 +125,109 @@ routerAdd("POST", "/api/camp/assign/{bookingId}", (e) => {
     waste: rec.waste,
     invoice: saved ? number : null,
   });
+});
+
+/* ----------------------------------------------------------------
+   3b. CHECK-IN (write)
+   POST /api/camp/checkin/{bookingId}
+   The guests arrived: physically occupy the reserved gers, one audit row.
+   ---------------------------------------------------------------- */
+routerAdd("POST", "/api/camp/checkin/{bookingId}", (e) => {
+  if (!e.auth) return e.json(401, { error: "auth required" });
+  const role = e.auth.get("role");
+  if (role !== "admin" && role !== "manager" && role !== "worker") {
+    return e.json(403, { error: "not allowed" });
+  }
+
+  const booking = e.app.findRecordById("bookings", e.request.pathValue("bookingId"));
+  if (booking.get("status") !== "confirmed") {
+    return e.json(400, { error: "booking is not confirmed" });
+  }
+  const ref = booking.get("ref");
+  const gerIds = booking.get("assigned_gers") || [];
+  if (!gerIds.length) return e.json(400, { error: "no gers assigned" });
+
+  // conflict check BEFORE any write: someone physically in one of our gers?
+  const gers = [];
+  for (let i = 0; i < gerIds.length; i++) {
+    const ger = e.app.findRecordById("gers", gerIds[i]);
+    const holder = ger.get("current_booking");
+    if (ger.get("status") === "occupied" && holder && holder !== ref) {
+      return e.json(409, { error: "ger occupied", ger: ger.get("code"), by: holder });
+    }
+    gers.push(ger);
+  }
+
+  gers.forEach((ger) => {
+    ger.set("status", "occupied");
+    ger.set("current_booking", ref);
+    e.app.save(ger);
+  });
+  booking.set("status", "checked_in");
+  e.app.save(booking);
+
+  try {
+    const log = new Record(e.app.findCollectionByNameOrId("audit_log"));
+    log.set("user", String(e.auth.get("full_name") || e.auth.get("email")));
+    log.set("role", String(role));
+    log.set("action", "checked_in");
+    log.set("entity", ref + " -> " + gers.map((g) => g.get("code")).join("+"));
+    log.set("detail", "guests arrived, " + gers.length + " ger(s) occupied");
+    e.app.save(log);
+  } catch (err) {
+    console.log("[audit] checkin skipped:", err);
+  }
+
+  return e.json(200, { ok: true, gers: gers.map((g) => g.get("code")) });
+});
+
+/* ----------------------------------------------------------------
+   3c. CHECK-OUT (write)
+   POST /api/camp/checkout/{bookingId}
+   Frees only the gers THIS booking physically holds (-> cleaning); a confirmed
+   booking that never checked in just flips status. One audit row.
+   ---------------------------------------------------------------- */
+routerAdd("POST", "/api/camp/checkout/{bookingId}", (e) => {
+  if (!e.auth) return e.json(401, { error: "auth required" });
+  const role = e.auth.get("role");
+  if (role !== "admin" && role !== "manager" && role !== "worker") {
+    return e.json(403, { error: "not allowed" });
+  }
+
+  const booking = e.app.findRecordById("bookings", e.request.pathValue("bookingId"));
+  const status = booking.get("status");
+  if (status !== "checked_in" && status !== "confirmed") {
+    return e.json(400, { error: "booking is not checked in or confirmed" });
+  }
+  const ref = booking.get("ref");
+
+  const freed = [];
+  (booking.get("assigned_gers") || []).forEach((gid) => {
+    let ger;
+    try { ger = e.app.findRecordById("gers", gid); } catch (err) { return; } // ger deleted meanwhile
+    if (ger.get("current_booking") === ref) {
+      ger.set("status", "cleaning");
+      ger.set("current_booking", "");
+      e.app.save(ger);
+      freed.push(ger.get("code"));
+    }
+  });
+  booking.set("status", "checked_out");
+  e.app.save(booking);
+
+  try {
+    const log = new Record(e.app.findCollectionByNameOrId("audit_log"));
+    log.set("user", String(e.auth.get("full_name") || e.auth.get("email")));
+    log.set("role", String(role));
+    log.set("action", "checked_out");
+    log.set("entity", ref + (freed.length ? " -> " + freed.join("+") : ""));
+    log.set("detail", freed.length ? freed.length + " ger(s) to cleaning" : "no gers were held");
+    e.app.save(log);
+  } catch (err) {
+    console.log("[audit] checkout skipped:", err);
+  }
+
+  return e.json(200, { ok: true, freed: freed });
 });
 
 /* ----------------------------------------------------------------
