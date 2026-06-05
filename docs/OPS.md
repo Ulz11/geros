@@ -1,10 +1,10 @@
 # Ops notes
 
-## Branch protection (deferred)
+## Branch protection (APPLIED when the repo went public)
 
-Branch protection on a **private** repo requires GitHub Pro; it's free on public
-repos. We skipped it at v1.0.0 (solo committer, CI already runs on every push).
-Re-apply the moment the repo goes Pro/public or a second collaborator joins:
+Applied since the repo went public (free tier covers public repos). Both CI checks
+are required and force-pushes/deletions to `main` are blocked. If it ever needs
+re-applying:
 
 ```sh
 gh api -X PUT repos/Ulz11/geros/branches/main/protection --input - <<'EOF'
