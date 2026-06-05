@@ -23,8 +23,8 @@ export const ROLES = ["admin", "manager", "kitchen", "worker"];
 
 // business collections audited by the hooks, wiped between tests; audit_log is
 // wiped LAST because deleting these (even as superuser) fires the audit hook.
-// wage_payments before staff (relation).
-const BIZ = ["bookings", "invoices", "kitchen_txns", "tour_operators", "wage_payments", "staff", "gers"];
+// wage_payments before staff, guests/operator_docs before their relations.
+const BIZ = ["guests", "operator_docs", "bookings", "invoices", "kitchen_txns", "tour_operators", "wage_payments", "staff", "services", "gers"];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

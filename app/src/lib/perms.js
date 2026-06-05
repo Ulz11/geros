@@ -1,10 +1,10 @@
 // Role → visible sections. Mirrors docs/DATA_MODEL.md permission matrix.
 // This is UX only — the real enforcement is the API rules in pb_schema.json.
 export const PERMS = {
-  admin: ["dashboard", "gers", "calendar", "bookings", "operators", "finance", "payroll", "kitchen", "reports", "audit", "settings"],
-  manager: ["dashboard", "gers", "calendar", "bookings", "operators", "finance", "payroll", "kitchen", "reports", "audit"],
+  admin: ["dashboard", "gers", "calendar", "bookings", "guests", "operators", "finance", "prices", "payroll", "kitchen", "reports", "audit", "settings"],
+  manager: ["dashboard", "gers", "calendar", "bookings", "guests", "operators", "finance", "prices", "payroll", "kitchen", "reports", "audit"],
   kitchen: ["dashboard", "kitchen"],
-  worker: ["dashboard", "gers", "calendar", "bookings"],
+  worker: ["dashboard", "gers", "calendar", "bookings", "guests"],
 };
 
 export const NAV = [
@@ -12,8 +12,10 @@ export const NAV = [
   { k: "gers", ic: "⬡" },
   { k: "calendar", ic: "◫" },
   { k: "bookings", ic: "▤" },
+  { k: "guests", ic: "👤" },
   { k: "operators", ic: "◎" },
   { k: "finance", ic: "₮" },
+  { k: "prices", ic: "✦" },
   { k: "payroll", ic: "▦" },
   { k: "kitchen", ic: "♨" },
   { k: "reports", ic: "◰" },
@@ -34,6 +36,9 @@ export const CAN_EDIT = {
   kitchen_txns: ["admin", "manager", "kitchen"],
   staff: ["admin", "manager"],
   wage_payments: ["admin", "manager"],
+  services: ["admin", "manager"],
+  guests: ["admin", "manager", "worker"],
+  operator_docs: ["admin", "manager"],
 };
 
 // Create is stricter than update for gers (schema: createRule admin/manager only —

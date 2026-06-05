@@ -15,6 +15,7 @@ export default function Finance({ role }) {
   const [kitchen, setKitchen] = useState([]);
   const [wages, setWages] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [services, setServices] = useState([]);
   const [siteMeta, setSiteMeta] = useState({});
   const [showNew, setShowNew] = useState(false);
   const [printInv, setPrintInv] = useState(null);
@@ -22,16 +23,18 @@ export default function Finance({ role }) {
 
   const load = useCallback(async () => {
     try {
-      const [i, k, b, w] = await Promise.all([
+      const [i, k, b, w, sv] = await Promise.all([
         pb.collection("invoices").getFullList({ sort: "-created", expand: "operator" }),
         pb.collection("kitchen_txns").getFullList({ sort: "-date" }).catch(() => []),
         pb.collection("bookings").getFullList({ sort: "-created", expand: "operator" }).catch(() => []),
         pb.collection("wage_payments").getFullList().catch(() => []),
+        pb.collection("services").getFullList({ filter: "active = true", sort: "category,name" }).catch(() => []),
       ]);
       setInv(i);
       setKitchen(k);
       setBookings(b);
       setWages(w);
+      setServices(sv);
     } catch (_) {
       toast(t("connErr"));
       setInv([]);
@@ -194,7 +197,7 @@ export default function Finance({ role }) {
         </div>
       </div>
       {showNew && (
-        <NewInvoiceModal t={t} toast={toast} bookings={bookings} existing={inv}
+        <NewInvoiceModal t={t} toast={toast} bookings={bookings} existing={inv} services={services}
           onClose={() => setShowNew(false)}
           onSaved={() => { setShowNew(false); load(); }} />
       )}
@@ -213,14 +216,34 @@ function nextInvoiceNumber(existing, bump = 0) {
   return "INV-" + year + "-" + String(max + 1 + bump).padStart(3, "0");
 }
 
-function NewInvoiceModal({ t, toast, bookings, existing, onClose, onSaved }) {
+function NewInvoiceModal({ t, toast, bookings, existing, services = [], onClose, onSaved }) {
   const [bookingId, setBookingId] = useState("");
   const [lines, setLines] = useState([{ desc: "Accommodation", qty: 1, price: 0 }]);
   const [vatOn, setVatOn] = useState(false);
   const [status, setStatus] = useState("pending");
   const [busy, setBusy] = useState(false);
+  const [svcPick, setSvcPick] = useState("");
 
   const booking = bookings.find((b) => b.id === bookingId);
+
+  // the INVOICE GENERATOR: pick a service from the camp's price list - the line
+  // arrives priced; per-person/per-night units prefill qty from the booking.
+  function addService(id) {
+    setSvcPick("");
+    const s = services.find((x) => x.id === id);
+    if (!s) return;
+    let qty = 1;
+    if (booking) {
+      const p = booking.party || 1, n = booking.nights || 1;
+      if (s.unit === "per_person") qty = p;
+      else if (s.unit === "per_night") qty = n;
+      else if (s.unit === "per_person_night") qty = p * n;
+    }
+    setLines((ls) => {
+      const base = ls.length === 1 && !ls[0].price && (!ls[0].desc || ls[0].desc === "Accommodation") ? [] : ls;
+      return [...base, { desc: s.name, qty, price: s.price }];
+    });
+  }
 
   function pickBooking(id) {
     setBookingId(id);
@@ -294,7 +317,18 @@ function NewInvoiceModal({ t, toast, bookings, existing, onClose, onSaved }) {
             <button className="btn ghost sm" onClick={() => rmLine(i)}>✕</button>
           </div>
         ))}
-        <button className="btn ghost sm" onClick={addLine}>+ {t("add")}</button>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <button className="btn ghost sm" onClick={addLine}>+ {t("add")}</button>
+          {services.length > 0 && (
+            <select value={svcPick} onChange={(e) => addService(e.target.value)}
+              style={{ fontSize: 12, padding: "5px 8px", maxWidth: 240 }}>
+              <option value="">✦ {t("fromPriceList")}</option>
+              {services.map((s) => (
+                <option key={s.id} value={s.id}>{s.name} — {fmt(s.price)} ({t(s.unit)})</option>
+              ))}
+            </select>
+          )}
+        </div>
       </div>
       <div className="kv" style={{ marginTop: 12 }}><span>{t("amount")}</span><b>{fmt(amount)}</b></div>
       <div className="kv">

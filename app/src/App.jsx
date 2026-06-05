@@ -7,8 +7,10 @@ import Dashboard from "./views/Dashboard";
 import GerMap from "./views/GerMap";
 import Calendar from "./views/Calendar";
 import Bookings from "./views/Bookings";
+import Guests from "./views/Guests";
 import Operators from "./views/Operators";
 import Finance from "./views/Finance";
+import Prices from "./views/Prices";
 import Payroll from "./views/Payroll";
 import Kitchen from "./views/Kitchen";
 import Reports from "./views/Reports";
@@ -21,8 +23,10 @@ const VIEWS = {
   gers: GerMap,
   calendar: Calendar,
   bookings: Bookings,
+  guests: Guests,
   operators: Operators,
   finance: Finance,
+  prices: Prices,
   payroll: Payroll,
   kitchen: Kitchen,
   reports: Reports,

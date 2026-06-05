@@ -254,6 +254,17 @@ script with Caddy TLS + systemd + nightly consistent SQLite backups.
   current data first), and `backend/test/restore.test.mjs` rehearses the full
   seed → backup → mutate → restore → verify round-trip against a real PocketBase **on
   every CI run** (55 tests total). Plus: the app and public site now ship a favicon.
+- **v1.7 (done, tested + verified end-to-end):** CRM + pricing, from camp feedback.
+  (1) **Price list** — the camp defines its services and prices once (breakfast/lunch/
+  dinner/guide/activities/transfers, per-person/per-night/fixed units, MN/EN names);
+  (2) **invoice generator** — "Add from price list" in New Invoice drops in priced
+  lines, auto-prefilling qty from the linked booking's party × nights;
+  (3) **Guest CRM** — every incoming tourist registered as a record (name, country,
+  passport, contact) linked to their booking and operator, searchable, CSV export,
+  hidden from the kitchen role (personal data);
+  (4) **operator folders** — documents inside each operator profile organized into
+  named folders (Contracts/Invoices/Correspondence + create-your-own).
+  8 new integration tests incl. a real multipart file upload (63 total).
 - **Not yet done:** Generic
   operator-PDF auto-parsing (the standalone generator handles the known format).
   Deliberately out of scope: online card payments,

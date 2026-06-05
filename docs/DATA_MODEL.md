@@ -130,6 +130,30 @@ migration files; the init migration stays frozen at the v1 snapshot.
 
 ---
 
+## `services`, `guests`, `operator_docs` (v1.7 — CRM + pricing)
+
+| field | type | notes |
+|---|---|---|
+| `services.name` | text, required | bilingual in one line: "Үдийн хоол / Lunch" |
+| `services.category` | select | meal · accommodation · guide · activity · transport · other |
+| `services.price` | number, required | ₮ |
+| `services.unit` | select | per_person · per_night · per_person_night · fixed |
+| `services.active` | bool | inactive services stay for history, hidden from the picker |
+| `guests.name` | text, required | the registered tourist |
+| `guests.country/passport_no/phone/email` | text/email | |
+| `guests.booking` / `operator` | relations | operator auto-follows the linked booking |
+| `operator_docs.operator` | relation, required, cascade | docs die with the operator |
+| `operator_docs.folder` | text, required | "Гэрээ / Contracts" etc. — the folder grouping |
+| `operator_docs.file` | file (multi, 5) | |
+
+Rules: services + operator_docs are managed by admin/manager (everyone authed reads);
+guests are staff-level (admin/manager/worker — reception registers arrivals) and
+**hidden from kitchen** (personal data). All three are audited. Shipped by
+`1717200400_crm_pricing.js`. The invoice generator in Finance pulls active services;
+per-person/per-night units prefill qty from the linked booking's party × nights.
+
+---
+
 ## Role → permission matrix
 
 | Section | admin | manager | kitchen | worker |
@@ -139,6 +163,8 @@ migration files; the init migration stays frozen at the v1 snapshot.
 | Bookings | ✓ | ✓ | — | view |
 | Operators / CRM | ✓ | ✓ | — | — |
 | Finance / Invoices | ✓ | ✓ | — | — |
+| Guests CRM | ✓ | ✓ | — | ✓ |
+| Price list | ✓ | ✓ | view | view |
 | Payroll (staff + wages) | ✓ | ✓ | — | — |
 | Kitchen | ✓ | ✓ | ✓ | — |
 | Reports | ✓ | ✓ | — | — |
